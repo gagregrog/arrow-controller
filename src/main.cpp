@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <WiFiManager.h>
+#include <ESPmDNS.h>
 #include "NFC.h"
 #include "QuickPlay.h"
 
@@ -9,6 +10,8 @@ void setup() {
     WiFiManager wm;
     wm.autoConnect("ArrowController");
     Serial.println("[WiFi] Connected");
+
+    MDNS.begin("arrow-controller");
 
     nfcBegin();
 }
