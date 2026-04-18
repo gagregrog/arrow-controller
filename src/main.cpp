@@ -2,7 +2,7 @@
 #include <WiFiManager.h>
 #include <ESPmDNS.h>
 #include "NFC.h"
-#include "QuickPlay.h"
+#include "ArrowClient.h"
 
 void setup() {
     Serial.begin(115200);
@@ -19,6 +19,6 @@ void setup() {
 void loop() {
     int id = nfcLoop();
     if (id >= 0) {
-        quickPlay(id);
+        arrowQuickPlay(id);
     }
 }
