@@ -1,0 +1,15 @@
+# Custom partition table for 4MB flash.
+#
+# Removes the unused SPIFFS partition and extends both OTA app slots from
+# 1.25 MB (default) to 1.875 MB, giving more headroom for firmware growth.
+#
+# Applying this requires a one-time serial flash (OTA cannot update the
+# partition table). After that, OTA works normally. NVS data (WiFi
+# credentials, saved alarms) is preserved — the NVS partition stays at the
+# same offset and size as the default table.
+#
+# Name,   Type, SubType, Offset,   Size,     Flags
+nvs,      data, nvs,     0x9000,   0x5000,
+otadata,  data, ota,     0xe000,   0x2000,
+app0,     app,  ota_0,   0x10000,  0x1F0000,
+app1,     app,  ota_1,   0x200000, 0x1F0000,
