@@ -6,3 +6,5 @@
 .env
 compile_commands.json
 .cache
+tags.csv
+include/TagMap.h

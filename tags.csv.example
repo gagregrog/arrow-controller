@@ -1,0 +1,6 @@
+# NFC tag map. Copy this file to tags.csv (gitignored) and fill in your UIDs.
+# One UID per line (colon-separated hex, as printed to serial).
+# Badge ID is assigned by line position, starting at 0.
+#
+# DE:AD:BE:EF:12:34:56
+# AB:CD:EF:01:23:45

@@ -69,7 +69,7 @@ int nfcLoop() {
 
     int id = lookupTag(uid, uidLen);
     if (id < 0) {
-        Serial.println("[NFC]   -> unknown tag, add UID to TagMap.h");
+        Serial.println("[NFC]   -> unknown tag, add UID to tags.csv");
         return -1;
     }
 
