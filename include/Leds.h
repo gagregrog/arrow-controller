@@ -15,3 +15,4 @@ void ledsFlashPlay();
 void ledsFlashStop();
 void ledsFlashMopidyRestart();
 void ledsFlashError();
+void ledsFlashUnknown();

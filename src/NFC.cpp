@@ -86,7 +86,7 @@ int nfcLoop() {
     if (id < 0) {
         Serial.println("[NFC]   -> unknown tag, add UID to tags.csv");
         nfc.startPassiveTargetIDDetection(PN532_MIFARE_ISO14443A);
-        return -1;
+        return NFC_UNKNOWN_TAG;
     }
 
     Serial.printf("[NFC]   -> badge %d\n", id);

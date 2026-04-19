@@ -34,6 +34,8 @@ void loop() {
         ledsFlashBadge();
         int code = arrowQuickPlay(id);
         if (code < 200 || code >= 300) ledsFlashError();
+    } else if (id == NFC_UNKNOWN_TAG) {
+        ledsFlashUnknown();
     }
     buttonsLoop();
 }

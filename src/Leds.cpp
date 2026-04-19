@@ -17,6 +17,7 @@ static const CRGB BLUE   = CRGB(  0, 100, 255);
 static const CRGB GREEN  = CRGB(  0, 255,   0);
 static const CRGB PURPLE = CRGB(128,   0, 255);
 static const CRGB RED    = CRGB(255,   0,   0);
+static const CRGB PINK   = CRGB(255,  20, 100);
 
 // Shared state — written by main-loop calls, read by LED task.
 // All access protected by mux.
@@ -149,3 +150,4 @@ void ledsFlashPlay()          { startFlash(PURPLE, 1); }
 void ledsFlashStop()          { startFlash(RED,    1); }
 void ledsFlashMopidyRestart() { startFlash(RED,    4); }
 void ledsFlashError()         { startFlash(ORANGE, 3); }
+void ledsFlashUnknown()       { startFlash(PINK,   1); }
