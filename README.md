@@ -47,6 +47,31 @@ Four momentary buttons, each wired between the GPIO pin and GND (active low — 
 
 No external resistors needed — internal pull-ups enabled.
 
+### Status LEDs
+
+WS2811 LED strip — 12 LEDs, data line on GPIO17.
+
+**Persistent states** (override all other indicators):
+
+| State              | Pattern            |
+| ------------------ | ------------------ |
+| WiFi lost          | Breathing orange   |
+| WiFi setup portal  | Breathing blue     |
+
+**Event flashes** (only shown when WiFi is connected):
+
+| Event                  | Pattern               |
+| ---------------------- | --------------------- |
+| Badge scanned (known)  | Green double flash    |
+| Badge scanned (unknown)| Pink single flash     |
+| Previous / Next / Restart track | Blue single flash |
+| Play                   | Purple single flash   |
+| Stop                   | Red single flash      |
+| Restart Mopidy         | Red quadruple flash   |
+| Command failed         | Orange triple flash   |
+
+Max brightness is set by `LED_MAX_BRIGHTNESS` in `Leds.cpp` (0–255, default 128).
+
 ## Setup
 
 On first boot, the controller creates a WiFi access point named **ArrowController**. Connect to it and enter your WiFi credentials. The controller will remember them on subsequent boots.
