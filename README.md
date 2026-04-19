@@ -29,8 +29,8 @@ pio run -t upload
 
 - ESP32 DevKitC
 - Adafruit PN532 NFC reader (I2C: SDA=GPIO21, SCL=GPIO22)
-- NFC interrupt: GPIO4
-- NFC reset: GPIO12
+- NFC interrupt: GPIO16 (active-low, wired to PN532 IRQ)
+- NFC reset: not wired (PN532 uses power-on reset)
 
 ### Physical Buttons
 
@@ -45,7 +45,7 @@ Four momentary buttons, each wired between the GPIO pin and GND (active low — 
 | Restart track  | 18   |
 | Restart Mopidy | 13   |
 
-No external resistors needed — internal pull-ups enabled. GPIO5 is shared with the NFC reset line but the NFC library only pulses it during startup.
+No external resistors needed — internal pull-ups enabled.
 
 ## Setup
 
@@ -70,6 +70,7 @@ The UID is printed to serial on every first scan of an unknown tag. `include/Tag
 
 ## How It Works
 
-1. Scans for NFC tags continuously
+1. Arms the PN532 for passive target detection; GPIO16 IRQ fires when a tag is present
 2. Looks up the tag UID in the tag map
 3. POSTs to `http://arrow.local/quickplay/{id}` when a known tag is detected
+4. A 3-second cooldown prevents duplicate triggers from the same tag

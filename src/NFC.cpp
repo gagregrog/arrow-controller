@@ -12,6 +12,12 @@ static unsigned long lastReadMs = 0;
 static uint8_t lastUID[7] = {};
 static uint8_t lastUIDLen = 0;
 
+static volatile bool tagDetected = false;
+
+static void IRAM_ATTR nfcISR() {
+    tagDetected = true;
+}
+
 static int lookupTag(const uint8_t *uid, uint8_t uidLen) {
     for (int i = 0; i < TAG_MAP_SIZE; i++) {
         if (uidLen == TAG_MAP[i].uidLen &&
@@ -41,14 +47,22 @@ void nfcBegin() {
     }
     Serial.printf("[NFC] PN532 firmware v%d.%d\n", (ver >> 16) & 0xFF, (ver >> 8) & 0xFF);
     nfc.SAMConfig();
+
+    pinMode(PIN_NFC_IRQ, INPUT);
+    attachInterrupt(digitalPinToInterrupt(PIN_NFC_IRQ), nfcISR, FALLING);
+    nfc.startPassiveTargetIDDetection(PN532_MIFARE_ISO14443A);
     Serial.println("[NFC] Ready");
 }
 
 int nfcLoop() {
+    if (!tagDetected) return -1;
+    tagDetected = false;
+
     uint8_t uid[7];
     uint8_t uidLen;
 
-    if (!nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLen, 100)) {
+    if (!nfc.readDetectedPassiveTargetID(uid, &uidLen)) {
+        nfc.startPassiveTargetIDDetection(PN532_MIFARE_ISO14443A);
         return -1;
     }
 
@@ -56,6 +70,7 @@ int nfcLoop() {
     if (uidLen == lastUIDLen &&
         memcmp(uid, lastUID, uidLen) == 0 &&
         (now - lastReadMs) < COOLDOWN_MS) {
+        nfc.startPassiveTargetIDDetection(PN532_MIFARE_ISO14443A);
         return -1;
     }
 
@@ -70,9 +85,11 @@ int nfcLoop() {
     int id = lookupTag(uid, uidLen);
     if (id < 0) {
         Serial.println("[NFC]   -> unknown tag, add UID to tags.csv");
+        nfc.startPassiveTargetIDDetection(PN532_MIFARE_ISO14443A);
         return -1;
     }
 
     Serial.printf("[NFC]   -> badge %d\n", id);
+    nfc.startPassiveTargetIDDetection(PN532_MIFARE_ISO14443A);
     return id;
 }

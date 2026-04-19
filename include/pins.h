@@ -4,10 +4,9 @@
 #define PIN_SDA      21
 #define PIN_SCL      22
 
-// PN532 NFC reader -- not actually wired up
-// only provided to satisfy the constructor
-#define PIN_NFC_IRQ    4
-#define PIN_NFC_RESET 12
+// PN532 NFC reader
+#define PIN_NFC_IRQ   16  // active-low, triggers interrupt on tag detect
+#define PIN_NFC_RESET 12  // not wired; PN532 uses power-on reset
 
 // Physical buttons (wired to GND, active low)
 #define PIN_BTN_PLAY            23
