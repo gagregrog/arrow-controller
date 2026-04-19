@@ -3,6 +3,7 @@
 #include <ESPmDNS.h>
 #include "NFC.h"
 #include "ArrowClient.h"
+#include "Buttons.h"
 
 void setup() {
     Serial.begin(115200);
@@ -14,6 +15,7 @@ void setup() {
     MDNS.begin("arrow-controller");
 
     nfcBegin();
+    buttonsBegin();
 }
 
 void loop() {
@@ -21,4 +23,5 @@ void loop() {
     if (id >= 0) {
         arrowQuickPlay(id);
     }
+    buttonsLoop();
 }

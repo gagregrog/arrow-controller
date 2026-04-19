@@ -30,7 +30,22 @@ pio run -t upload
 - ESP32 DevKitC
 - Adafruit PN532 NFC reader (I2C: SDA=GPIO21, SCL=GPIO22)
 - NFC interrupt: GPIO4
-- NFC reset: GPIO5
+- NFC reset: GPIO12
+
+### Physical Buttons
+
+Four momentary buttons, each wired between the GPIO pin and GND (active low — internal pull-ups enabled):
+
+| Button         | GPIO |
+| -------------- | ---- |
+| Play           | 23   |
+| Stop           | 5    |
+| Previous       | 19   |
+| Next           | 26   |
+| Restart track  | 18   |
+| Restart Mopidy | 13   |
+
+No external resistors needed — internal pull-ups enabled. GPIO5 is shared with the NFC reset line but the NFC library only pulses it during startup.
 
 ## Setup
 
