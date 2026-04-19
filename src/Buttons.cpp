@@ -1,16 +1,37 @@
 #include <Arduino.h>
 #include "Buttons.h"
 #include "ArrowClient.h"
+#include "Leds.h"
 #include "pins.h"
 
 #define DEBOUNCE_MS 50
 
-static void onPlay()          { arrowPlay(); }
-static void onStop()          { arrowStop(); }
-static void onPrevious()      { arrowPreviousTrack(); }
-static void onNext()          { arrowNextTrack(); }
-static void onRestart()       { arrowRestartTrack(); }
-static void onMopidyRestart() { arrowRestartMopidy(); }
+static bool failed(int code) { return code < 200 || code >= 300; }
+
+static void onPlay() {
+    ledsFlashPlay();
+    if (failed(arrowPlay())) ledsFlashError();
+}
+static void onStop() {
+    ledsFlashStop();
+    if (failed(arrowStop())) ledsFlashError();
+}
+static void onPrevious() {
+    ledsFlashTrack();
+    if (failed(arrowPreviousTrack())) ledsFlashError();
+}
+static void onNext() {
+    ledsFlashTrack();
+    if (failed(arrowNextTrack())) ledsFlashError();
+}
+static void onRestart() {
+    ledsFlashTrack();
+    if (failed(arrowRestartTrack())) ledsFlashError();
+}
+static void onMopidyRestart() {
+    ledsFlashMopidyRestart();
+    if (failed(arrowRestartMopidy())) ledsFlashError();
+}
 
 struct ButtonDef {
     int pin;
