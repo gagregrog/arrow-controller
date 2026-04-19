@@ -10,7 +10,7 @@
 #define BREATHE_FPS_MS    33    // ~30fps
 #define FLASH_ON_MS       80
 #define FLASH_OFF_MS      80
-#define LED_MAX_BRIGHTNESS 128  // 0–255
+#define LED_MAX_BRIGHTNESS 32  // 0–255
 
 static const CRGB ORANGE = CRGB(255,  80,   0);
 static const CRGB BLUE   = CRGB(  0, 100, 255);
