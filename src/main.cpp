@@ -10,6 +10,9 @@ void setup() {
 
     WiFiManager wm;
     wm.autoConnect("ArrowController");
+    // Power down the radio between DTIM beacon intervals (~100ms) while
+    // staying associated — cuts idle draw without adding reconnect latency.
+    WiFi.setSleep(true);
     Serial.println("[WiFi] Connected");
 
     MDNS.begin("arrow-controller");
