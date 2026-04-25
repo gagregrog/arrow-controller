@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arrow Badge Manager</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #1a1a1a;
+      color: #e0e0e0;
+      margin: 0;
+      padding: 1.5rem;
+    }
+    h1 { margin: 0 0 1.5rem; font-size: 1.4rem; }
+    .badge-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .badge-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: #2a2a2a;
+      border: 1px solid #3a3a3a;
+      border-radius: 6px;
+      padding: 0.6rem 0.8rem;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .badge-row.active { background: #1a3a2a; border-color: #2a7a4a; }
+    .slot { font-weight: 600; min-width: 2rem; color: #888; }
+    .uid { font-family: monospace; font-size: 0.85rem; color: #aaa; flex: 1; }
+    .label { flex: 2; font-size: 0.9rem; }
+    .label.unmapped { color: #666; font-style: italic; }
+    .remove-btn {
+      background: none;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 0.2rem 0.5rem;
+      cursor: pointer;
+      color: #e05555;
+      font-size: 0.8rem;
+    }
+    .remove-btn:hover { background: #3a1a1a; border-color: #e05555; }
+    .empty-msg { color: #666; font-style: italic; }
+    .status {
+      margin-bottom: 1rem;
+      font-size: 0.8rem;
+      color: #666;
+    }
+    .status.connected { color: #4caf50; }
+    .status.disconnected { color: #e05555; }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.visible { display: flex; }
+    .modal {
+      background: #2a2a2a;
+      border: 1px solid #3a3a3a;
+      border-radius: 8px;
+      padding: 1.5rem;
+      max-width: 360px;
+      width: 90%;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .modal h2 { margin: 0 0 1rem; font-size: 1.1rem; }
+    .modal p { margin: 0 0 0.4rem; font-size: 0.9rem; color: #bbb; }
+    .modal .uid-display {
+      font-family: monospace;
+      background: #1a1a1a;
+      border: 1px solid #3a3a3a;
+      padding: 0.3rem 0.5rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+      color: #e0e0e0;
+    }
+    .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+    .btn {
+      padding: 0.4rem 1rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .btn-primary { background: #0066cc; color: #fff; }
+    .btn-primary:hover { background: #0077ee; }
+    .btn-secondary { background: #3a3a3a; color: #ccc; }
+    .btn-secondary:hover { background: #444; }
+  </style>
+</head>
+<body>
+  <h1>Arrow Badge Manager</h1>
+  <div id="ws-status" class="status disconnected">WebSocket: disconnected</div>
+  <div id="badges" class="badge-list"><p class="empty-msg">Loading...</p></div>
+
+  <div id="modal-overlay" class="modal-overlay">
+    <div class="modal">
+      <h2>Register Badge?</h2>
+      <p>Badge detected:</p>
+      <div id="modal-uid" class="uid-display"></div>
+      <p>This will be registered as slot <strong id="modal-slot"></strong>.</p>
+      <div id="modal-quickplay" style="margin-bottom:1rem;font-size:0.85rem;color:#555;"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="modal-dismiss">Dismiss</button>
+        <button class="btn btn-primary" id="modal-register">Register</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let badges = [];
+    let quickplay = [];
+    let pendingUID = null;
+
+    async function loadData() {
+      try {
+        const [br, qr] = await Promise.all([
+          fetch('/api/badges'),
+          fetch('/api/quickplay')
+        ]);
+        badges = br.ok ? (await br.json()).badges : [];
+        const qdata = qr.ok ? (await qr.json()) : null;
+        quickplay = qdata ? (qdata.quickplay || []) : [];
+      } catch (e) {
+        badges = [];
+        quickplay = [];
+      }
+      render();
+    }
+
+    function qpLabel(entry) {
+      if (!entry) return null;
+      if (entry.shuffle) return 'Shuffle all';
+      if (!entry.artist) return null;
+      return entry.album ? `${entry.artist} / ${entry.album}` : entry.artist;
+    }
+
+    function render() {
+      const container = document.getElementById('badges');
+      if (badges.length === 0) {
+        container.innerHTML = '<p class="empty-msg">No badges registered. Scan a badge to register it.</p>';
+        return;
+      }
+      container.innerHTML = badges.map((uid, i) => {
+        const label = qpLabel(quickplay[i]);
+        return `<div class="badge-row" id="badge-${i}">
+          <span class="slot">#${i}</span>
+          <span class="uid">${uid}</span>
+          <span class="label${label ? '' : ' unmapped'}">${label || '(no quickplay entry)'}</span>
+          <button class="remove-btn" onclick="removeBadge(${i})">Remove</button>
+        </div>`;
+      }).join('');
+    }
+
+    async function removeBadge(index) {
+      await fetch('/api/badges/' + index, { method: 'DELETE' });
+      await loadData();
+    }
+
+    // Modal
+    document.getElementById('modal-register').addEventListener('click', async () => {
+      if (!pendingUID) return;
+      await fetch('/api/badges', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: pendingUID })
+      });
+      pendingUID = null;
+      document.getElementById('modal-overlay').classList.remove('visible');
+      await loadData();
+    });
+
+    document.getElementById('modal-dismiss').addEventListener('click', () => {
+      pendingUID = null;
+      document.getElementById('modal-overlay').classList.remove('visible');
+    });
+
+    // WebSocket
+    function connectWS() {
+      const ws = new WebSocket('ws://' + location.host + '/ws');
+      const statusEl = document.getElementById('ws-status');
+
+      ws.addEventListener('open', () => {
+        statusEl.textContent = 'WebSocket: connected';
+        statusEl.className = 'status connected';
+      });
+
+      ws.addEventListener('close', () => {
+        statusEl.textContent = 'WebSocket: disconnected';
+        statusEl.className = 'status disconnected';
+        setTimeout(connectWS, 2000);
+      });
+
+      ws.addEventListener('message', (e) => {
+        let msg;
+        try { msg = JSON.parse(e.data); } catch { return; }
+
+        if (msg.type === 'badge_scan') {
+          const row = document.getElementById('badge-' + msg.index);
+          if (row) {
+            row.classList.add('active');
+            setTimeout(() => row.classList.remove('active'), 1200);
+          }
+        } else if (msg.type === 'unknown_badge') {
+          pendingUID = msg.uid;
+          const slot = badges.length;
+          document.getElementById('modal-uid').textContent = msg.uid;
+          document.getElementById('modal-slot').textContent = '#' + slot;
+          const qp = quickplay[slot];
+          const label = qpLabel(qp);
+          const qpEl = document.getElementById('modal-quickplay');
+          qpEl.textContent = label ? 'Quickplay entry: ' + label : '';
+          document.getElementById('modal-overlay').classList.add('visible');
+        }
+      });
+    }
+
+    loadData();
+    connectWS();
+  </script>
+</body>
+</html>

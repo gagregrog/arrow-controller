@@ -2,10 +2,10 @@
 #include <Wire.h>
 #include <Adafruit_PN532.h>
 #include "pins.h"
-#include "TagMap.h"
 #include "NFC.h"
 
 static Adafruit_PN532 nfc(PIN_NFC_IRQ, PIN_NFC_RESET);
+static BadgeStore* _store = nullptr;
 
 static const unsigned long COOLDOWN_MS = 3000;
 static unsigned long lastReadMs = 0;
@@ -18,16 +18,6 @@ static void IRAM_ATTR nfcISR() {
     tagDetected = true;
 }
 
-static int lookupTag(const uint8_t *uid, uint8_t uidLen) {
-    for (int i = 0; i < TAG_MAP_SIZE; i++) {
-        if (uidLen == TAG_MAP[i].uidLen &&
-            memcmp(uid, TAG_MAP[i].uid, uidLen) == 0) {
-            return TAG_MAP[i].id;
-        }
-    }
-    return -1;
-}
-
 static void logUID(const uint8_t *uid, uint8_t len) {
     for (uint8_t i = 0; i < len; i++) {
         if (i > 0) Serial.print(":");
@@ -36,7 +26,9 @@ static void logUID(const uint8_t *uid, uint8_t len) {
     }
 }
 
-void nfcBegin() {
+void nfcBegin(BadgeStore* store) {
+    _store = store;
+
     Wire.begin(PIN_SDA, PIN_SCL);
     nfc.begin();
 
@@ -53,6 +45,9 @@ void nfcBegin() {
     nfc.startPassiveTargetIDDetection(PN532_MIFARE_ISO14443A);
     Serial.println("[NFC] Ready");
 }
+
+const uint8_t* nfcLastUID()    { return lastUID; }
+uint8_t        nfcLastUIDLen() { return lastUIDLen; }
 
 int nfcLoop() {
     if (!tagDetected) return -1;
@@ -82,9 +77,9 @@ int nfcLoop() {
     logUID(uid, uidLen);
     Serial.println();
 
-    int id = lookupTag(uid, uidLen);
+    int id = _store->lookup(uid, uidLen);
     if (id < 0) {
-        Serial.println("[NFC]   -> unknown tag, add UID to tags.csv");
+        Serial.println("[NFC]   -> unknown tag");
         nfc.startPassiveTargetIDDetection(PN532_MIFARE_ISO14443A);
         return NFC_UNKNOWN_TAG;
     }

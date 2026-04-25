@@ -8,3 +8,4 @@ compile_commands.json
 .cache
 tags.csv
 include/TagMap.h
+src/web/web_ui_html.h

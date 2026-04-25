@@ -41,3 +41,20 @@ int arrowNextTrack()          { return post("/next"); }
 int arrowPreviousTrack()      { return post("/previous"); }
 int arrowRestartTrack()       { return post("/restart"); }
 int arrowRestartMopidy()      { return post("/service/mopidy/restart"); }
+
+String arrowGetQuickplay() {
+    String base = arrowBaseUrl();
+    if (base.isEmpty()) return "";
+    HTTPClient http;
+    http.begin(base + "/quickplay");
+    http.setTimeout(3000);
+    int code = http.GET();
+    if (code != 200) {
+        Serial.printf("[ArrowClient] GET /quickplay -> %d\n", code);
+        http.end();
+        return "";
+    }
+    String result = http.getString();
+    http.end();
+    return result;
+}
