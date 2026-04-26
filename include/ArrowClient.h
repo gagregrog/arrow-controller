@@ -9,4 +9,8 @@ int    arrowNextTrack();
 int    arrowPreviousTrack();
 int    arrowRestartTrack();
 int    arrowRestartMopidy();
-String arrowGetQuickplay(); // returns JSON body or empty string on failure
+String arrowGetQuickplay();
+String arrowGetArtists();
+String arrowGetArtistAlbums(const String& encodedArtist); // artist name must be percent-encoded
+int    arrowPutQuickplay(int index, const String& jsonBody);
+int    arrowClearQuickplay();

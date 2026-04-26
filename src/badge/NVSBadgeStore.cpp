@@ -29,10 +29,6 @@ static BadgeUID uidFromHex(const char* s) {
     return b;
 }
 
-NVSBadgeStore::NVSBadgeStore() {
-    load();
-}
-
 void NVSBadgeStore::load() {
     Preferences prefs;
     prefs.begin(NS, true);

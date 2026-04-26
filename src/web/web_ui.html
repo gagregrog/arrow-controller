@@ -30,6 +30,17 @@
     .uid { font-family: monospace; font-size: 0.85rem; color: #aaa; flex: 1; }
     .label { flex: 2; font-size: 0.9rem; }
     .label.unmapped { color: #666; font-style: italic; }
+    .row-actions { display: flex; gap: 0.4rem; }
+    .link-btn {
+      background: none;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 0.2rem 0.5rem;
+      cursor: pointer;
+      color: #88aaff;
+      font-size: 0.8rem;
+    }
+    .link-btn:hover { background: #1a2a4a; border-color: #88aaff; }
     .remove-btn {
       background: none;
       border: 1px solid #444;
@@ -49,7 +60,7 @@
     .status.connected { color: #4caf50; }
     .status.disconnected { color: #e05555; }
 
-    /* Modal */
+    /* Shared modal styles */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -57,6 +68,7 @@
       background: rgba(0,0,0,0.6);
       align-items: center;
       justify-content: center;
+      z-index: 10;
     }
     .modal-overlay.visible { display: flex; }
     .modal {
@@ -79,7 +91,7 @@
       margin-bottom: 1rem;
       color: #e0e0e0;
     }
-    .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+    .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
     .btn {
       padding: 0.4rem 1rem;
       border: none;
@@ -91,23 +103,93 @@
     .btn-primary:hover { background: #0077ee; }
     .btn-secondary { background: #3a3a3a; color: #ccc; }
     .btn-secondary:hover { background: #444; }
+
+    /* Link modal extras */
+    .link-modal { max-width: 420px; }
+    .link-search {
+      width: 100%;
+      background: #1a1a1a;
+      border: 1px solid #3a3a3a;
+      border-radius: 4px;
+      padding: 0.45rem 0.6rem;
+      color: #e0e0e0;
+      font-size: 0.9rem;
+      margin-bottom: 0.75rem;
+      outline: none;
+    }
+    .link-search:focus { border-color: #555; }
+    .link-results {
+      max-height: 320px;
+      overflow-y: auto;
+      border: 1px solid #3a3a3a;
+      border-radius: 4px;
+    }
+    .link-item {
+      padding: 0.5rem 0.75rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+      border-bottom: 1px solid #333;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .link-item:last-child { border-bottom: none; }
+    .link-item:hover { background: #333; }
+    .link-item.special { color: #aaa; font-style: italic; }
+    .link-item.artist { font-weight: 500; }
+    .link-item .expand-icon { color: #666; font-size: 0.75rem; }
+    .link-item.album { padding-left: 1.5rem; color: #ccc; font-size: 0.85rem; }
+    .link-item.album:hover { background: #2e2e2e; color: #fff; }
+    .link-results-empty { padding: 0.75rem; color: #666; font-size: 0.85rem; font-style: italic; text-align: center; }
+    .header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1.5rem; }
+    .header h1 { margin: 0; }
+    .btn-danger { background: none; border: 1px solid #663333; border-radius: 4px; padding: 0.3rem 0.75rem; cursor: pointer; color: #e05555; font-size: 0.8rem; }
+    .btn-danger:hover { background: #3a1a1a; border-color: #e05555; }
   </style>
 </head>
 <body>
-  <h1>Arrow Badge Manager</h1>
+  <div class="header">
+    <h1>Arrow Badge Manager</h1>
+    <button class="btn-danger" onclick="openClearModal()">Clear Quickplay</button>
+  </div>
   <div id="ws-status" class="status disconnected">WebSocket: disconnected</div>
   <div id="badges" class="badge-list"><p class="empty-msg">Loading...</p></div>
 
+  <!-- Clear confirmation modal -->
+  <div id="clear-overlay" class="modal-overlay">
+    <div class="modal">
+      <h2>Clear Quickplay List?</h2>
+      <p>This will remove all quickplay entries from the Pi server. Registered badges will remain but will be unlinked.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="clear-dismiss">Cancel</button>
+        <button class="btn" style="background:#8b0000;color:#fff;" id="clear-confirm">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Register badge modal -->
   <div id="modal-overlay" class="modal-overlay">
     <div class="modal">
       <h2>Register Badge?</h2>
       <p>Badge detected:</p>
       <div id="modal-uid" class="uid-display"></div>
       <p>This will be registered as slot <strong id="modal-slot"></strong>.</p>
-      <div id="modal-quickplay" style="margin-bottom:1rem;font-size:0.85rem;color:#555;"></div>
+      <div id="modal-quickplay" style="margin-bottom:0.5rem;font-size:0.85rem;color:#aaa;"></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" id="modal-dismiss">Dismiss</button>
         <button class="btn btn-primary" id="modal-register">Register</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Link badge modal -->
+  <div id="link-overlay" class="modal-overlay">
+    <div class="modal link-modal">
+      <h2>Link Badge <span id="link-slot-label"></span></h2>
+      <input type="text" class="link-search" id="link-search" placeholder="Search artists…" autocomplete="off" spellcheck="false">
+      <div id="link-results" class="link-results"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="link-dismiss">Cancel</button>
       </div>
     </div>
   </div>
@@ -116,6 +198,11 @@
     let badges = [];
     let quickplay = [];
     let pendingUID = null;
+    let linkSlot = -1;
+    let allArtists = null;
+    let albumCache = {};
+
+    // ── Data loading ──────────────────────────────────────────────────────────
 
     async function loadData() {
       try {
@@ -125,7 +212,12 @@
         ]);
         badges = br.ok ? (await br.json()).badges : [];
         const qdata = qr.ok ? (await qr.json()) : null;
-        quickplay = qdata ? (qdata.quickplay || []) : [];
+        console.log('[quickplay] GET response:', JSON.stringify(qdata));
+        if (Array.isArray(qdata)) {
+          quickplay = qdata;
+        } else {
+          quickplay = qdata ? (qdata.quickplay || []) : [];
+        }
       } catch (e) {
         badges = [];
         quickplay = [];
@@ -140,6 +232,8 @@
       return entry.album ? `${entry.artist} / ${entry.album}` : entry.artist;
     }
 
+    // ── Badge list render ─────────────────────────────────────────────────────
+
     function render() {
       const container = document.getElementById('badges');
       if (badges.length === 0) {
@@ -151,8 +245,11 @@
         return `<div class="badge-row" id="badge-${i}">
           <span class="slot">#${i}</span>
           <span class="uid">${uid}</span>
-          <span class="label${label ? '' : ' unmapped'}">${label || '(no quickplay entry)'}</span>
-          <button class="remove-btn" onclick="removeBadge(${i})">Remove</button>
+          <span class="label${label ? '' : ' unmapped'}">${label || '(unlinked)'}</span>
+          <div class="row-actions">
+            <button class="link-btn" onclick="openLinkModal(${i})">Link</button>
+            <button class="remove-btn" onclick="removeBadge(${i})">Remove</button>
+          </div>
         </div>`;
       }).join('');
     }
@@ -162,7 +259,22 @@
       await loadData();
     }
 
-    // Modal
+    // ── Clear modal ───────────────────────────────────────────────────────────
+
+    function openClearModal() {
+      document.getElementById('clear-overlay').classList.add('visible');
+    }
+    document.getElementById('clear-dismiss').addEventListener('click', () => {
+      document.getElementById('clear-overlay').classList.remove('visible');
+    });
+    document.getElementById('clear-confirm').addEventListener('click', async () => {
+      document.getElementById('clear-overlay').classList.remove('visible');
+      await fetch('/api/quickplay', { method: 'DELETE' });
+      await loadData();
+    });
+
+    // ── Register modal ────────────────────────────────────────────────────────
+
     document.getElementById('modal-register').addEventListener('click', async () => {
       if (!pendingUID) return;
       await fetch('/api/badges', {
@@ -180,7 +292,126 @@
       document.getElementById('modal-overlay').classList.remove('visible');
     });
 
-    // WebSocket
+    // ── Link modal ────────────────────────────────────────────────────────────
+
+    async function openLinkModal(slotIndex) {
+      linkSlot = slotIndex;
+      document.getElementById('link-slot-label').textContent = '#' + slotIndex;
+      document.getElementById('link-search').value = '';
+      document.getElementById('link-results').innerHTML = '<div class="link-results-empty">Loading artists…</div>';
+      document.getElementById('link-overlay').classList.add('visible');
+      document.getElementById('link-search').focus();
+
+      if (!allArtists) {
+        try {
+          const res = await fetch('/api/artists');
+          const data = res.ok ? await res.json() : null;
+          allArtists = data ? (data.artists || []).sort() : [];
+        } catch (e) {
+          allArtists = [];
+        }
+      }
+      renderLinkResults('');
+    }
+
+    document.getElementById('link-dismiss').addEventListener('click', () => {
+      document.getElementById('link-overlay').classList.remove('visible');
+    });
+
+    document.getElementById('link-search').addEventListener('input', (e) => {
+      renderLinkResults(e.target.value);
+    });
+
+    function renderLinkResults(query) {
+      const container = document.getElementById('link-results');
+      const q = query.trim().toLowerCase();
+      const filtered = q
+        ? allArtists.filter(a => a.toLowerCase().includes(q))
+        : allArtists;
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="link-results-empty">No artists found</div>';
+        return;
+      }
+
+      let html = '<div class="link-item special" onclick="selectEntry({shuffle:true})">Shuffle all</div>';
+      for (const artist of filtered) {
+        const cached = albumCache[artist]; // undefined=not fetched, null=error, []=no albums, [...]=has albums
+        const expanded = cached !== undefined;
+        html += `<div class="link-item artist" onclick="toggleArtist(this,'${escapeAttr(artist)}')">
+          <span>${escapeHtml(artist)}</span>
+          <span class="expand-icon">${expanded ? '▾' : '▸'}</span>
+        </div>`;
+        if (expanded) {
+          html += albumRows(artist, cached);
+        }
+      }
+      container.innerHTML = html;
+    }
+
+    async function toggleArtist(el, artist) {
+      if (albumCache[artist] !== undefined) {
+        delete albumCache[artist];
+        renderLinkResults(document.getElementById('link-search').value);
+        return;
+      }
+      el.querySelector('.expand-icon').textContent = '…';
+      try {
+        const encoded = encodeURIComponent(artist);
+        const res = await fetch('/api/artists/' + encoded + '/albums');
+        console.log('[albums]', artist, res.status, res.ok);
+        if (res.ok) {
+          const data = await res.json();
+          console.log('[albums] data:', data);
+          albumCache[artist] = data.albums || [];
+        } else {
+          albumCache[artist] = null; // error sentinel — allows retry on next click
+        }
+      } catch (e) {
+        console.error('[albums] fetch error:', e);
+        albumCache[artist] = null;
+      }
+      renderLinkResults(document.getElementById('link-search').value);
+    }
+
+    function albumRows(artist, albums) {
+      if (albums === null) {
+        return `<div class="link-item album" style="color:#e05555;cursor:default">Failed to load albums — check console</div>`;
+      }
+      let html = `<div class="link-item album" onclick="selectEntry({artist:'${escapeAttr(artist)}',album:null,shuffle:false})">
+        All albums by ${escapeHtml(artist)}
+      </div>`;
+      for (const album of albums) {
+        html += `<div class="link-item album" onclick="selectEntry({artist:'${escapeAttr(artist)}',album:'${escapeAttr(album)}',shuffle:false})">
+          ${escapeHtml(album)}
+        </div>`;
+      }
+      return html;
+    }
+
+    async function selectEntry(entry) {
+      document.getElementById('link-overlay').classList.remove('visible');
+      const res = await fetch('/api/quickplay/' + linkSlot, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry)
+      });
+      if (!res.ok) {
+        console.error('[quickplay] PUT failed:', res.status, await res.text());
+        alert('Failed to save quickplay entry (slot ' + linkSlot + '). Check serial log for details.');
+      }
+      await loadData();
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function escapeAttr(s) {
+      return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    }
+
+    // ── WebSocket ─────────────────────────────────────────────────────────────
+
     function connectWS() {
       const ws = new WebSocket('ws://' + location.host + '/ws');
       const statusEl = document.getElementById('ws-status');
@@ -213,8 +444,8 @@
           document.getElementById('modal-slot').textContent = '#' + slot;
           const qp = quickplay[slot];
           const label = qpLabel(qp);
-          const qpEl = document.getElementById('modal-quickplay');
-          qpEl.textContent = label ? 'Quickplay entry: ' + label : '';
+          document.getElementById('modal-quickplay').textContent =
+            label ? 'Quickplay entry: ' + label : '';
           document.getElementById('modal-overlay').classList.add('visible');
         }
       });

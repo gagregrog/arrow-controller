@@ -44,38 +44,38 @@ void badgeAPIBegin(BadgeStore* store) {
         req->send(200, "application/json", body);
     });
 
-    apiGetServer()->on("/api/badges", HTTP_POST, [](AsyncWebServerRequest* req) {
-        JsonDocument doc;
-        if (deserializeJson(doc, _pendingBody) != DeserializationError::Ok
-            || !doc["uid"].is<const char*>()) {
-            req->send(400, "application/json", "{\"error\":\"invalid body\"}");
-            return;
-        }
-        BadgeUID b = uidFromHex(doc["uid"].as<const char*>());
-        if (b.len == 0) {
-            req->send(400, "application/json", "{\"error\":\"invalid uid\"}");
-            return;
-        }
-        if (_store->lookup(b.bytes, b.len) >= 0) {
-            req->send(409, "application/json", "{\"error\":\"already registered\"}");
-            return;
-        }
-        int index = _store->add(b.bytes, b.len);
-        JsonDocument resp;
-        resp["index"] = index;
-        resp["uid"] = doc["uid"];
-        String body;
-        serializeJson(resp, body);
-        req->send(201, "application/json", body);
-    });
-
-    apiAddBodyHandler([](AsyncWebServerRequest* req, uint8_t* data, size_t len,
-                         size_t index, size_t total) {
-        if (req->url() == "/api/badges" && req->method() == HTTP_POST) {
+    // Body handler must be passed inline — onRequestBody only fires for unmatched routes.
+    apiGetServer()->on("/api/badges", HTTP_POST,
+        [](AsyncWebServerRequest* req) {
+            JsonDocument doc;
+            if (deserializeJson(doc, _pendingBody) != DeserializationError::Ok
+                || !doc["uid"].is<const char*>()) {
+                req->send(400, "application/json", "{\"error\":\"invalid body\"}");
+                return;
+            }
+            BadgeUID b = uidFromHex(doc["uid"].as<const char*>());
+            if (b.len == 0) {
+                req->send(400, "application/json", "{\"error\":\"invalid uid\"}");
+                return;
+            }
+            if (_store->lookup(b.bytes, b.len) >= 0) {
+                req->send(409, "application/json", "{\"error\":\"already registered\"}");
+                return;
+            }
+            int index = _store->add(b.bytes, b.len);
+            JsonDocument resp;
+            resp["index"] = index;
+            resp["uid"] = doc["uid"];
+            String body;
+            serializeJson(resp, body);
+            req->send(201, "application/json", body);
+        },
+        nullptr,
+        [](AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t index, size_t total) {
             if (index == 0) _pendingBody.clear();
             _pendingBody += String((char*)data, len);
         }
-    });
+    );
 
     apiAddNotFoundHandler([](AsyncWebServerRequest* req) -> bool {
         String url = req->url();

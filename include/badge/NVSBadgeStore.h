@@ -4,7 +4,7 @@
 
 class NVSBadgeStore : public BadgeStore {
 public:
-    NVSBadgeStore();
+    void load();
     int lookup(const uint8_t* uid, uint8_t len) override;
     int count() override;
     BadgeUID get(int index) override;
@@ -13,6 +13,5 @@ public:
 
 private:
     std::vector<BadgeUID> _badges;
-    void load();
     void save();
 };
