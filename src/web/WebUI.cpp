@@ -87,6 +87,18 @@ void webUIBegin() {
             return true;
         }
 
+        // POST /api/quickplay/{index} — trigger playback
+        if (req->method() == HTTP_POST && url.startsWith("/api/quickplay/")) {
+            int idx = url.substring(15).toInt();
+            int code = arrowQuickPlay(idx);
+            if (code >= 200 && code < 300) {
+                req->send(200, "application/json", "{\"ok\":true}");
+            } else {
+                req->send(502, "application/json", "{\"error\":\"upstream error\"}");
+            }
+            return true;
+        }
+
         // PUT /api/quickplay/{index}
         if (req->method() == HTTP_PUT && url.startsWith("/api/quickplay/")) {
             int idx = url.substring(15).toInt();

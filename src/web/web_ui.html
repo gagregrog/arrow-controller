@@ -47,6 +47,16 @@
       font-size: 0.8rem;
     }
     .link-btn:hover { background: #1a2a4a; border-color: #88aaff; }
+    .play-btn {
+      background: none;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 0.2rem 0.5rem;
+      cursor: pointer;
+      color: #88cc88;
+      font-size: 0.8rem;
+    }
+    .play-btn:hover { background: #1a3a1a; border-color: #88cc88; }
     .remove-btn {
       background: none;
       border: 1px solid #444;
@@ -257,11 +267,16 @@
           <span class="uid">${uid}</span>
           <span class="label${label ? '' : ' unmapped'}">${label || '(unlinked)'}</span>
           <div class="row-actions">
+            <button class="play-btn" onclick="playBadge(${i})">&#9654;</button>
             <button class="link-btn" onclick="openLinkModal(${i})">Link Music</button>
             <button class="remove-btn" onclick="removeBadge(${i})">Remove</button>
           </div>
         </div>`;
       }).join('');
+    }
+
+    async function playBadge(index) {
+      await fetch('/api/quickplay/' + index, { method: 'POST' });
     }
 
     async function removeBadge(index) {
