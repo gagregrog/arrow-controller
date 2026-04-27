@@ -14,3 +14,5 @@ String arrowGetArtists();
 String arrowGetArtistAlbums(const String& encodedArtist); // artist name must be percent-encoded
 int    arrowPutQuickplay(int index, const String& jsonBody);
 int    arrowClearQuickplay();
+String arrowGetIR();
+int    arrowSendIR(const String& function);

@@ -77,3 +77,5 @@ String arrowGetArtists()                               { return get("/artists");
 String arrowGetArtistAlbums(const String& encodedArtist) { return get("/artist/" + encodedArtist + "/albums"); }
 int    arrowPutQuickplay(int index, const String& body) { return put("/quickplay/" + String(index), body); }
 int    arrowClearQuickplay()                            { return put("/quickplay", "[]"); }
+String arrowGetIR()                                    { return get("/ir"); }
+int    arrowSendIR(const String& function)             { return post("/ir/" + function); }

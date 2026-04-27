@@ -61,8 +61,29 @@ void webUIBegin() {
         }
     });
 
+    apiGetServer()->on("/api/ir", HTTP_GET, [](AsyncWebServerRequest* request) {
+        String body = arrowGetIR();
+        if (body.isEmpty()) {
+            request->send(502, "application/json", "{\"error\":\"upstream unavailable\"}");
+        } else {
+            request->send(200, "application/json", body);
+        }
+    });
+
     apiAddNotFoundHandler([](AsyncWebServerRequest* req) -> bool {
         String url = req->url();
+
+        // POST /api/ir/{function}
+        if (req->method() == HTTP_POST && url.startsWith("/api/ir/")) {
+            String function = url.substring(8);
+            int code = arrowSendIR(function);
+            if (code >= 200 && code < 300) {
+                req->send(200, "application/json", "{\"ok\":true}");
+            } else {
+                req->send(502, "application/json", "{\"error\":\"upstream error\"}");
+            }
+            return true;
+        }
 
         // GET /api/artists (exact)
         if (req->method() == HTTP_GET && url == "/api/artists") {
