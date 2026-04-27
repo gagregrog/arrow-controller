@@ -114,6 +114,8 @@ The web UI fetches the current quickplay list from the Arrow server (`http://arr
 | POST | `/api/badges` | Register a new badge `{"uid":"AA:BB:CC:DD"}` |
 | DELETE | `/api/badges/{index}` | Remove badge at index |
 | GET | `/api/quickplay` | Proxied quickplay list from Arrow server |
+| GET | `/api/ir` | Proxied IR function list from Arrow server — returns `[{name, class}]` |
+| POST | `/api/ir/{function}` | Send a named IR command via Arrow server |
 
 ## WebSocket
 

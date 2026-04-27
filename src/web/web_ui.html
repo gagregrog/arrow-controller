@@ -166,7 +166,8 @@
 
     /* IR Controller */
     .section-title { font-size: 1rem; font-weight: 600; color: #999; margin: 0 0 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; }
-    .ir-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .ir-grid { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .ir-class { font-size: 0.75rem; font-weight: 600; color: #666; margin: 0; text-transform: uppercase; letter-spacing: 0.05em; width: 100%; }
     .ir-btn {
       background: none;
       border: 1px solid #444;
@@ -250,12 +251,20 @@
       try {
         const res = await fetch('/api/ir');
         if (!res.ok) return;
-        const data = await res.json();
-        const functions = data.functions || [];
+        const items = await res.json();
+        if (!Array.isArray(items) || items.length === 0) return;
+        const groups = {};
+        for (const {name, class: cls} of items) {
+          const key = cls || '';
+          (groups[key] = groups[key] || []).push(name);
+        }
         const section = document.getElementById('ir-controller');
-        if (functions.length === 0) return;
-        document.getElementById('ir-grid').innerHTML = functions
-          .map(fn => `<button class="ir-btn" onclick="sendIR('${escapeAttr(fn)}')">${escapeHtml(fn)}</button>`)
+        document.getElementById('ir-grid').innerHTML = Object.entries(groups)
+          .map(([cls, names]) => {
+            const header = cls ? `<p class="ir-class">${escapeHtml(cls)}</p>` : '';
+            const buttons = names.map(n => `<button class="ir-btn" onclick="sendIR('${escapeAttr(n)}')">${escapeHtml(n)}</button>`).join('');
+            return header + buttons;
+          })
           .join('');
         section.style.display = '';
       } catch (e) {
