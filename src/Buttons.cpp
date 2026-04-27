@@ -5,6 +5,7 @@
 #include "pins.h"
 
 #define DEBOUNCE_MS 50
+#define LONG_PRESS_MS 1500
 
 static bool failed(int code) { return code < 200 || code >= 300; }
 
@@ -15,6 +16,9 @@ static void onPlay() {
 static void onStop() {
     ledsFlashStop();
     if (failed(arrowStop())) ledsFlashError();
+}
+static void onPower() {
+    if (failed(arrowSendIR("power"))) ledsFlashError();
 }
 static void onPrevious() {
     ledsFlashTrack();
@@ -36,21 +40,25 @@ static void onMopidyRestart() {
 struct ButtonDef {
     int pin;
     void (*onPress)();
+    void (*onLongPress)();  // null = no long press action
 };
 
 static const ButtonDef buttons[] = {
-    { PIN_BTN_PLAY,           onPlay          },
-    { PIN_BTN_STOP,           onStop          },
-    { PIN_BTN_PREVIOUS,       onPrevious      },
-    { PIN_BTN_NEXT,           onNext          },
-    { PIN_BTN_RESTART,        onRestart       },
-    { PIN_BTN_MOPIDY_RESTART, onMopidyRestart },
+    { PIN_BTN_PLAY,           onPlay,          nullptr },
+    { PIN_BTN_STOP,           onStop,          onPower },
+    { PIN_BTN_PREVIOUS,       onPrevious,      nullptr },
+    { PIN_BTN_NEXT,           onNext,          nullptr },
+    { PIN_BTN_RESTART,        onRestart,       nullptr },
+    { PIN_BTN_MOPIDY_RESTART, onMopidyRestart, nullptr },
 };
 
 static const int BUTTON_COUNT = sizeof(buttons) / sizeof(buttons[0]);
 
 // Set by ISR on falling edge; cleared by buttonsLoop after debounce
 static volatile unsigned long isrTriggerMs[BUTTON_COUNT];
+// For buttons with onLongPress: records confirmed press time and tracks awaiting release
+static unsigned long pressedMs[BUTTON_COUNT];
+static bool waitingRelease[BUTTON_COUNT];
 
 static void IRAM_ATTR isr0() { isrTriggerMs[0] = millis(); }
 static void IRAM_ATTR isr1() { isrTriggerMs[1] = millis(); }
@@ -63,6 +71,8 @@ void buttonsBegin() {
     static void (*isrs[BUTTON_COUNT])() = { isr0, isr1, isr2, isr3, isr4, isr5 };
     for (int i = 0; i < BUTTON_COUNT; i++) {
         isrTriggerMs[i] = 0;
+        pressedMs[i] = 0;
+        waitingRelease[i] = false;
         pinMode(buttons[i].pin, INPUT_PULLUP);
         attachInterrupt(digitalPinToInterrupt(buttons[i].pin), isrs[i], FALLING);
     }
@@ -71,11 +81,27 @@ void buttonsBegin() {
 void buttonsLoop() {
     unsigned long now = millis();
     for (int i = 0; i < BUTTON_COUNT; i++) {
+        if (waitingRelease[i]) {
+            if ((now - pressedMs[i]) >= LONG_PRESS_MS) {
+                waitingRelease[i] = false;
+                buttons[i].onLongPress();
+            } else if (digitalRead(buttons[i].pin) == HIGH) {
+                waitingRelease[i] = false;
+                buttons[i].onPress();
+            }
+            continue;
+        }
+
         unsigned long t = isrTriggerMs[i];
         if (t != 0 && (now - t) >= DEBOUNCE_MS) {
             isrTriggerMs[i] = 0;
             if (digitalRead(buttons[i].pin) == LOW) {
-                buttons[i].onPress();
+                if (buttons[i].onLongPress != nullptr) {
+                    pressedMs[i] = t;
+                    waitingRelease[i] = true;
+                } else {
+                    buttons[i].onPress();
+                }
             }
         }
     }

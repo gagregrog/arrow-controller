@@ -36,16 +36,18 @@ pio run -t upload
 
 Four momentary buttons, each wired between the GPIO pin and GND (active low — internal pull-ups enabled):
 
-| Button         | GPIO |
-| -------------- | ---- |
-| Play           | 23   |
-| Stop           | 5    |
-| Previous       | 19   |
-| Next           | 26   |
-| Restart track  | 18   |
-| Restart Mopidy | 13   |
+| Button         | GPIO | Short press       | Long press (≥1.5s) |
+| -------------- | ---- | ----------------- | ------------------- |
+| Play           | 23   | Play              | —                   |
+| Stop           | 5    | Stop              | Send IR "power"     |
+| Previous       | 19   | Previous track    | —                   |
+| Next           | 26   | Next track        | —                   |
+| Restart track  | 18   | Restart track     | —                   |
+| Restart Mopidy | 13   | Restart Mopidy    | —                   |
 
 No external resistors needed — internal pull-ups enabled.
+
+Short presses fire on release; long presses fire as soon as the 1.5s threshold is crossed (button still held).
 
 ### Status LEDs
 
