@@ -144,10 +144,10 @@ static void startFlash(CRGB color, int count) {
     taskEXIT_CRITICAL(&mux);
 }
 
-void ledsFlashBadge()         { startFlash(GREEN,  2); }
-void ledsFlashTrack()         { startFlash(BLUE,   1); }
-void ledsFlashPlay()          { startFlash(PURPLE, 1); }
-void ledsFlashStop()          { startFlash(RED,    1); }
-void ledsFlashMopidyRestart() { startFlash(RED,    4); }
-void ledsFlashError()         { startFlash(ORANGE, 3); }
-void ledsFlashUnknown()       { startFlash(PINK,   1); }
+void ledsFlashBadge()         { startFlash(GREEN,  4); }
+void ledsFlashTrack()         { startFlash(BLUE,   2); }
+void ledsFlashPlay()          { startFlash(PURPLE, 2); }
+void ledsFlashStop()          { startFlash(RED,    2); }
+void ledsFlashMopidyRestart() { startFlash(RED,    8); }
+void ledsFlashError()         { startFlash(ORANGE, 6); }
+void ledsFlashUnknown()       { startFlash(PINK,   2); }
