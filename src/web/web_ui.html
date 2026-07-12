@@ -296,8 +296,12 @@
     async function sendIR(fn) {
       const btn = [...document.querySelectorAll('.ir-btn')].find(b => b.textContent === fn);
       if (btn) btn.classList.add('sending');
+      // Volume commands step 3 increments per press, matching the physical buttons.
+      const count = (fn === 'volumeUp' || fn === 'volumeDown') ? 3 : 1;
+      let path = '/api/ir/' + encodeURIComponent(fn);
+      if (count > 1) path += '?count=' + count;
       try {
-        await fetch('/api/ir/' + encodeURIComponent(fn), { method: 'POST' });
+        await fetch(path, { method: 'POST' });
       } finally {
         if (btn) btn.classList.remove('sending');
       }

@@ -73,10 +73,15 @@ void webUIBegin() {
     apiAddNotFoundHandler([](AsyncWebServerRequest* req) -> bool {
         String url = req->url();
 
-        // POST /api/ir/{function}
+        // POST /api/ir/{function}[?count=N]
         if (req->method() == HTTP_POST && url.startsWith("/api/ir/")) {
             String function = url.substring(8);
-            int code = arrowSendIR(function);
+            int count = 1;
+            if (req->hasParam("count")) {
+                count = req->getParam("count")->value().toInt();
+                if (count < 1) count = 1;
+            }
+            int code = arrowSendIR(function, count);
             if (code >= 200 && code < 300) {
                 req->send(200, "application/json", "{\"ok\":true}");
             } else {
