@@ -15,4 +15,4 @@ String arrowGetArtistAlbums(const String& encodedArtist); // artist name must be
 int    arrowPutQuickplay(int index, const String& jsonBody);
 int    arrowClearQuickplay();
 String arrowGetIR();
-int    arrowSendIR(const String& function);
+int    arrowSendIR(const String& function, int count = 1);

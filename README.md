@@ -36,16 +36,14 @@ pio run -t upload
 
 Four momentary buttons, each wired between the GPIO pin and GND (active low — internal pull-ups enabled):
 
-| Button         | GPIO | Short press       | Long press (≥1.5s) |
-| -------------- | ---- | ----------------- | ------------------- |
-| Play           | 23   | Play              | —                   |
-| Stop           | 5    | Stop              | Send IR "power"     |
-| Previous       | 19   | Previous track    | —                   |
-| Next           | 26   | Next track        | —                   |
-| Restart track  | 18   | Restart track     | —                   |
-| Restart Mopidy | 13   | Restart Mopidy    | —                   |
+| Button   | GPIO | Short press                                              | Long press (≥1.5s)                          |
+| -------- | ---- | -------------------------------------------------------- | ------------------------------------------- |
+| Play     | 18   | Pause if playing, resume if paused, else start quickplay #0 | Shuffle all                                 |
+| Stop     | 19   | Stop and switch the receiver to the TV input             | Stop, switch to TV input, then power off the receiver |
+| Previous | 26   | Previous track                                           | Volume down (3 increments)                  |
+| Next     | 23   | Next track                                               | Volume up (3 increments)                    |
 
-No external resistors needed — internal pull-ups enabled.
+The play/pause-vs-quickplay decision is made server-side by `POST /play`. No external resistors needed — internal pull-ups enabled.
 
 Short presses fire on release; long presses fire as soon as the 1.5s threshold is crossed (button still held).
 
@@ -62,17 +60,17 @@ WS2811 LED strip — 12 LEDs, data line on GPIO17.
 
 **Event flashes** (only shown when WiFi is connected):
 
-| Event                  | Pattern               |
-| ---------------------- | --------------------- |
-| Badge scanned (known)  | Green double flash    |
-| Badge scanned (unknown)| Pink single flash     |
-| Previous / Next / Restart track | Blue single flash |
-| Play                   | Purple single flash   |
-| Stop                   | Red single flash      |
-| Restart Mopidy         | Red quadruple flash   |
-| Command failed         | Orange triple flash   |
+| Event                   | Pattern           |
+| ----------------------- | ----------------- |
+| Badge scanned (known)   | Green, 4 flashes  |
+| Badge scanned (unknown) | Pink, 2 flashes   |
+| Previous / Next track   | Blue, 2 flashes   |
+| Volume up / down        | Blue, 2 flashes   |
+| Play / Shuffle          | Purple, 2 flashes |
+| Stop                    | Red, 2 flashes    |
+| Command failed          | Orange, 6 flashes |
 
-Max brightness is set by `LED_MAX_BRIGHTNESS` in `Leds.cpp` (0–255, default 128).
+Max brightness is set by `LED_MAX_BRIGHTNESS` in `Leds.cpp` (0–255, default 32).
 
 ## Setup
 

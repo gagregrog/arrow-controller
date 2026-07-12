@@ -78,4 +78,8 @@ String arrowGetArtistAlbums(const String& encodedArtist) { return get("/artist/"
 int    arrowPutQuickplay(int index, const String& body) { return put("/quickplay/" + String(index), body); }
 int    arrowClearQuickplay()                            { return put("/quickplay", "[]"); }
 String arrowGetIR()                                    { return get("/ir"); }
-int    arrowSendIR(const String& function)             { return post("/ir/" + function); }
+int    arrowSendIR(const String& function, int count) {
+    String path = "/ir/" + function;
+    if (count > 1) path += "?count=" + String(count);
+    return post(path);
+}

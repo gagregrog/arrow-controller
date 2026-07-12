@@ -9,32 +9,49 @@
 
 static bool failed(int code) { return code < 200 || code >= 300; }
 
+// Play: pause when playing, resume when paused, else start quickplay #0.
+// The server (/play) decides which, based on playback state.
 static void onPlay() {
     ledsFlashPlay();
     if (failed(arrowPlay())) ledsFlashError();
 }
+// Play long-press: shuffle the whole library.
+static void onShuffle() {
+    ledsFlashPlay();
+    if (failed(arrowShuffle())) ledsFlashError();
+}
+// Stop: stop playback and switch the receiver back to the TV input.
 static void onStop() {
     ledsFlashStop();
-    if (failed(arrowStop())) ledsFlashError();
+    int stop = arrowStop();
+    int tv   = arrowSendIR("tv");
+    if (failed(stop) || failed(tv)) ledsFlashError();
 }
-static void onPower() {
-    if (failed(arrowSendIR("power"))) ledsFlashError();
+// Stop long-press: same as stop, then power the receiver off.
+static void onStopPower() {
+    ledsFlashStop();
+    int stop  = arrowStop();
+    int tv    = arrowSendIR("tv");
+    int power = arrowSendIR("power");
+    if (failed(stop) || failed(tv) || failed(power)) ledsFlashError();
 }
 static void onPrevious() {
     ledsFlashTrack();
     if (failed(arrowPreviousTrack())) ledsFlashError();
 }
+// Previous long-press: turn the volume down 3 increments (one request).
+static void onVolumeDown() {
+    ledsFlashTrack();
+    if (failed(arrowSendIR("volumeDown", 3))) ledsFlashError();
+}
 static void onNext() {
     ledsFlashTrack();
     if (failed(arrowNextTrack())) ledsFlashError();
 }
-static void onRestart() {
+// Next long-press: turn the volume up 3 increments (one request).
+static void onVolumeUp() {
     ledsFlashTrack();
-    if (failed(arrowRestartTrack())) ledsFlashError();
-}
-static void onMopidyRestart() {
-    ledsFlashMopidyRestart();
-    if (failed(arrowRestartMopidy())) ledsFlashError();
+    if (failed(arrowSendIR("volumeUp", 3))) ledsFlashError();
 }
 
 struct ButtonDef {
@@ -44,12 +61,10 @@ struct ButtonDef {
 };
 
 static const ButtonDef buttons[] = {
-    { PIN_BTN_PLAY,           onPlay,          nullptr },
-    { PIN_BTN_STOP,           onStop,          onPower },
-    { PIN_BTN_PREVIOUS,       onPrevious,      nullptr },
-    { PIN_BTN_NEXT,           onNext,          nullptr },
-    { PIN_BTN_RESTART,        onRestart,       nullptr },
-    { PIN_BTN_MOPIDY_RESTART, onMopidyRestart, nullptr },
+    { PIN_BTN_PLAY,     onPlay,     onShuffle    },
+    { PIN_BTN_STOP,     onStop,     onStopPower  },
+    { PIN_BTN_PREVIOUS, onPrevious, onVolumeDown },
+    { PIN_BTN_NEXT,     onNext,     onVolumeUp   },
 };
 
 static const int BUTTON_COUNT = sizeof(buttons) / sizeof(buttons[0]);
@@ -64,11 +79,9 @@ static void IRAM_ATTR isr0() { isrTriggerMs[0] = millis(); }
 static void IRAM_ATTR isr1() { isrTriggerMs[1] = millis(); }
 static void IRAM_ATTR isr2() { isrTriggerMs[2] = millis(); }
 static void IRAM_ATTR isr3() { isrTriggerMs[3] = millis(); }
-static void IRAM_ATTR isr4() { isrTriggerMs[4] = millis(); }
-static void IRAM_ATTR isr5() { isrTriggerMs[5] = millis(); }
 
 void buttonsBegin() {
-    static void (*isrs[BUTTON_COUNT])() = { isr0, isr1, isr2, isr3, isr4, isr5 };
+    static void (*isrs[BUTTON_COUNT])() = { isr0, isr1, isr2, isr3 };
     for (int i = 0; i < BUTTON_COUNT; i++) {
         isrTriggerMs[i] = 0;
         pressedMs[i] = 0;
