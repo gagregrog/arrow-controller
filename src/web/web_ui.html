@@ -38,6 +38,18 @@
     .uid { font-family: monospace; font-size: 0.85rem; color: #aaa; flex: 1; }
     .label { flex: 2; font-size: 0.9rem; }
     .label.unmapped { color: #666; font-style: italic; }
+    .label.loading { color: #888; font-style: italic; display: inline-flex; align-items: center; gap: 0.4rem; }
+    .spinner {
+      display: inline-block;
+      width: 0.85em;
+      height: 0.85em;
+      border: 2px solid #444;
+      border-top-color: #88aaff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .row-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-left: auto; }
     .link-btn {
       background: none;
@@ -379,6 +391,8 @@
       pendingUID = null;
       document.getElementById('modal-overlay').classList.remove('visible');
       await loadData();
+      // Newly registered badge lands in the last slot — jump straight to linking music.
+      openLinkModal(badges.length - 1);
     });
 
     document.getElementById('modal-dismiss').addEventListener('click', () => {
@@ -483,8 +497,19 @@
       return html;
     }
 
+    function showRowLoading(index) {
+      const row = document.getElementById('badge-' + index);
+      if (!row) return;
+      const label = row.querySelector('.label');
+      if (label) {
+        label.className = 'label loading';
+        label.innerHTML = '<span class="spinner"></span>Saving…';
+      }
+    }
+
     async function selectEntry(entry) {
       document.getElementById('link-overlay').classList.remove('visible');
+      showRowLoading(linkSlot);
       const res = await fetch('/api/quickplay/' + linkSlot, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
