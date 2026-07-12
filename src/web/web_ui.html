@@ -6,6 +6,7 @@
   <title>Arrow Badge Manager</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
+    button { -webkit-user-select: none; user-select: none; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: #1a1a1a;
@@ -18,6 +19,7 @@
     .badge-row {
       display: flex;
       align-items: center;
+      flex-wrap: wrap;
       gap: 0.75rem;
       background: #2a2a2a;
       border: 1px solid #3a3a3a;
@@ -36,7 +38,7 @@
     .uid { font-family: monospace; font-size: 0.85rem; color: #aaa; flex: 1; }
     .label { flex: 2; font-size: 0.9rem; }
     .label.unmapped { color: #666; font-style: italic; }
-    .row-actions { display: flex; gap: 0.4rem; }
+    .row-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-left: auto; }
     .link-btn {
       background: none;
       border: 1px solid #444;
@@ -159,7 +161,7 @@
     .link-item.album { padding-left: 1.5rem; color: #ccc; font-size: 0.85rem; }
     .link-item.album:hover { background: #2e2e2e; color: #fff; }
     .link-results-empty { padding: 0.75rem; color: #666; font-size: 0.85rem; font-style: italic; text-align: center; }
-    .header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1.5rem; }
+    .header { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.75rem; justify-content: space-between; margin-bottom: 1.5rem; }
     .header h1 { margin: 0; }
     .btn-danger { background: none; border: 1px solid #663333; border-radius: 4px; padding: 0.3rem 0.75rem; cursor: pointer; color: #e05555; font-size: 0.8rem; }
     .btn-danger:hover { background: #3a1a1a; border-color: #e05555; }
@@ -180,6 +182,13 @@
     .ir-btn:hover { background: #2a2a2a; border-color: #888; }
     .ir-btn:active { background: #333; }
     .ir-btn.sending { opacity: 0.5; pointer-events: none; }
+
+    /* Mobile: drop action buttons to their own row */
+    @media (max-width: 600px) {
+      body { padding: 1rem; }
+      .header .btn-danger { flex-basis: 100%; }
+      .badge-row .row-actions { flex-basis: 100%; margin-left: 0; }
+    }
   </style>
 </head>
 <body>
