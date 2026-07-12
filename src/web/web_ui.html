@@ -91,6 +91,15 @@
     }
     .ws-badge.connected { background: #1a3a1a; border-color: #2a7a2a; color: #4caf50; }
     .ws-badge.disconnected { background: #2e1a1a; border-color: #5a2a2a; color: #e05555; }
+    .ip-badge {
+      font-size: 0.72rem;
+      padding: 0.18rem 0.55rem;
+      border-radius: 999px;
+      border: 1px solid #3a3a3a;
+      background: #222;
+      color: #9aa;
+      font-family: monospace;
+    }
 
     /* Shared modal styles */
     .modal-overlay {
@@ -208,6 +217,7 @@
     <div style="display:flex;align-items:center;gap:0.75rem;">
       <h1>Arrow Badge Manager</h1>
       <span id="ws-status" class="ws-badge disconnected">disconnected</span>
+      <span id="device-ip" class="ip-badge" style="display:none"></span>
     </div>
     <button class="btn-danger" onclick="openClearModal()">Clear Quickplay</button>
   </div>
@@ -574,8 +584,23 @@
       });
     }
 
+    async function loadIP() {
+      try {
+        const res = await fetch('/ip');
+        if (!res.ok) return;
+        const { ip } = await res.json();
+        if (!ip) return;
+        const el = document.getElementById('device-ip');
+        el.textContent = ip;
+        el.style.display = '';
+      } catch (e) {
+        // Leave the badge hidden if the IP can't be fetched.
+      }
+    }
+
     loadData();
     loadIR();
+    loadIP();
     connectWS();
   </script>
 </body>
