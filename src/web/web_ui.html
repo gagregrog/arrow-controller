@@ -111,7 +111,9 @@
       justify-content: center;
       z-index: 10;
     }
-    .modal-overlay.visible { display: flex; }
+    .modal-overlay.visible { display: flex; overscroll-behavior: contain; }
+    /* Lock page scroll while any modal is open so it can't scroll behind. */
+    body:has(.modal-overlay.visible) { overflow: hidden; }
     .modal {
       background: #2a2a2a;
       border: 1px solid #3a3a3a;
@@ -162,6 +164,7 @@
     .link-results {
       max-height: 320px;
       overflow-y: auto;
+      overscroll-behavior: contain;
       border: 1px solid #3a3a3a;
       border-radius: 4px;
     }
