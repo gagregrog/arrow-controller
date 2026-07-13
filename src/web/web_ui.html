@@ -184,6 +184,39 @@
     .link-item .expand-icon { color: #666; font-size: 0.75rem; }
     .link-item.album { padding-left: 1.5rem; color: #ccc; font-size: 0.85rem; }
     .link-item.album:hover { background: #2e2e2e; color: #fff; }
+    .link-item.selected { background: #143e63; }
+    .link-item.selected:hover { background: #1a4d78; }
+    .link-item .check { color: #4da3ff; font-size: 0.8rem; width: 1rem; text-align: center; }
+
+    /* Selection tray */
+    .link-tray {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.75rem;
+    }
+    .link-tray:empty { display: none; }
+    .tray-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: #143e63;
+      border: 1px solid #1f5a8c;
+      border-radius: 999px;
+      padding: 0.25rem 0.35rem 0.25rem 0.7rem;
+      font-size: 0.8rem;
+      color: #e0e0e0;
+    }
+    .tray-chip button {
+      background: none;
+      border: none;
+      color: #9cc7ef;
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      padding: 0 0.15rem;
+    }
+    .tray-chip button:hover { color: #fff; }
     .link-results-empty { padding: 0.75rem; color: #666; font-size: 0.85rem; font-style: italic; text-align: center; }
     .header { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.75rem; justify-content: space-between; margin-bottom: 1.5rem; }
     .header h1 { margin: 0; }
@@ -265,8 +298,10 @@
       <h2>Link Badge <span id="link-slot-label"></span></h2>
       <input type="text" class="link-search" id="link-search" placeholder="Search artists…" autocomplete="off" spellcheck="false">
       <div id="link-results" class="link-results"></div>
+      <div id="link-tray" class="link-tray"></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" id="link-dismiss">Cancel</button>
+        <button class="btn btn-primary" id="link-save">Save</button>
       </div>
     </div>
   </div>
@@ -278,6 +313,8 @@
     let linkSlot = -1;
     let allArtists = null;
     let albumCache = {};
+    let linkSelection = [];
+    let linkShuffle = false;
 
     // ── IR Controller ─────────────────────────────────────────────────────────
 
@@ -343,11 +380,21 @@
       render();
     }
 
+    function itemLabel(item) {
+      if (!item || !item.artist) return null;
+      return item.album ? `${item.artist} / ${item.album}` : item.artist;
+    }
+
+    function itemKey(item) {
+      return 'a ' + (item.artist || '') + ' ' + (item.album || '');
+    }
+
     function qpLabel(entry) {
-      if (!entry) return null;
-      if (entry.shuffle) return 'Shuffle all';
-      if (!entry.artist) return null;
-      return entry.album ? `${entry.artist} / ${entry.album}` : entry.artist;
+      if (entry && entry.shuffle) return 'Shuffle all';
+      const items = entry && entry.items ? entry.items : [];
+      if (items.length === 0) return null;
+      const first = itemLabel(items[0]);
+      return items.length === 1 ? first : `${first} +${items.length - 1} more`;
     }
 
     // ── Badge list render ─────────────────────────────────────────────────────
@@ -421,9 +468,14 @@
 
     async function openLinkModal(slotIndex) {
       linkSlot = slotIndex;
+      // Start from the entry's current state so opening an existing link edits it.
+      const existing = quickplay[slotIndex] || {};
+      linkShuffle = !!existing.shuffle;
+      linkSelection = existing.items ? existing.items.map(i => ({...i})) : [];
       document.getElementById('link-slot-label').textContent = '#' + slotIndex;
       document.getElementById('link-search').value = '';
       document.getElementById('link-results').innerHTML = '<div class="link-results-empty">Loading artists…</div>';
+      renderTray();
       document.getElementById('link-overlay').classList.add('visible');
       document.getElementById('link-search').focus();
 
@@ -459,7 +511,10 @@
         return;
       }
 
-      let html = '<div class="link-item special" onclick="selectEntry({shuffle:true})">Shuffle all</div>';
+      let html = `<div class="link-item special${linkShuffle ? ' selected' : ''}" onclick="toggleShuffleAll()">
+        <span>Shuffle all</span>
+        <span class="check">${linkShuffle ? '✓' : ''}</span>
+      </div>`;
       for (const artist of filtered) {
         const cached = albumCache[artist]; // undefined=not fetched, null=error, []=no albums, [...]=has albums
         const expanded = cached !== undefined;
@@ -499,19 +554,76 @@
       renderLinkResults(document.getElementById('link-search').value);
     }
 
+    function isSelected(item) {
+      return linkSelection.some(s => itemKey(s) === itemKey(item));
+    }
+
+    // Serialize an object as JSON safe to embed in a double-quoted HTML attribute.
+    function attrJSON(obj) {
+      return JSON.stringify(obj)
+        .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // Render a selectable result row: a check marker when the item is in the
+    // current selection, and a click that toggles it in the tray.
+    function row(item, extraClass, text) {
+      const sel = isSelected(item);
+      return `<div class="link-item ${extraClass}${sel ? ' selected' : ''}" onclick="toggleItem(${attrJSON(item)})">
+        <span>${escapeHtml(text)}</span>
+        <span class="check">${sel ? '✓' : ''}</span>
+      </div>`;
+    }
+
     function albumRows(artist, albums) {
       if (albums === null) {
         return `<div class="link-item album" style="color:#e05555;cursor:default">Failed to load albums — check console</div>`;
       }
-      let html = `<div class="link-item album" onclick="selectEntry({artist:'${escapeAttr(artist)}',album:null,shuffle:false})">
-        All albums by ${escapeHtml(artist)}
-      </div>`;
+      let html = row({artist, album:null}, 'album', 'All albums by ' + artist);
       for (const album of albums) {
-        html += `<div class="link-item album" onclick="selectEntry({artist:'${escapeAttr(artist)}',album:'${escapeAttr(album)}',shuffle:false})">
-          ${escapeHtml(album)}
-        </div>`;
+        html += row({artist, album}, 'album', album);
       }
       return html;
+    }
+
+    function toggleItem(item) {
+      const key = itemKey(item);
+      const at = linkSelection.findIndex(s => itemKey(s) === key);
+      if (at >= 0) {
+        linkSelection.splice(at, 1);
+      } else {
+        // Picking a specific item is mutually exclusive with shuffle-all.
+        linkShuffle = false;
+        linkSelection.push(item);
+      }
+      renderLinkResults(document.getElementById('link-search').value);
+      renderTray();
+    }
+
+    function toggleShuffleAll() {
+      linkShuffle = !linkShuffle;
+      // Shuffle-all is the whole entry — it can't coexist with specific picks.
+      if (linkShuffle) linkSelection = [];
+      renderLinkResults(document.getElementById('link-search').value);
+      renderTray();
+    }
+
+    function renderTray() {
+      const tray = document.getElementById('link-tray');
+      if (linkShuffle) {
+        tray.innerHTML =
+          `<span class="tray-chip">Shuffle all<button onclick="toggleShuffleAll()" aria-label="Remove">×</button></span>`;
+        return;
+      }
+      tray.innerHTML = linkSelection.map((item, i) =>
+        `<span class="tray-chip">${escapeHtml(itemLabel(item))}<button onclick="removeSelected(${i})" aria-label="Remove">×</button></span>`
+      ).join('');
+    }
+
+    function removeSelected(i) {
+      linkSelection.splice(i, 1);
+      renderLinkResults(document.getElementById('link-search').value);
+      renderTray();
     }
 
     function showRowLoading(index) {
@@ -524,13 +636,13 @@
       }
     }
 
-    async function selectEntry(entry) {
+    async function saveLinkSelection() {
       document.getElementById('link-overlay').classList.remove('visible');
       showRowLoading(linkSlot);
       const res = await fetch('/api/quickplay/' + linkSlot, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(entry)
+        body: JSON.stringify(linkShuffle ? { shuffle: true } : { items: linkSelection })
       });
       if (!res.ok) {
         console.error('[quickplay] PUT failed:', res.status, await res.text());
@@ -538,6 +650,8 @@
       }
       await loadData();
     }
+
+    document.getElementById('link-save').addEventListener('click', saveLinkSelection);
 
     function escapeHtml(s) {
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');

@@ -102,9 +102,10 @@ Badges are registered at runtime via the built-in web UI at `http://arrow-contro
 
 - Scan an unregistered badge → a modal appears prompting you to register it as the next slot
 - Registered badges are shown alongside their corresponding quickplay entry
+- The "Link Music" modal is multi-select: tap artists/albums to add them to the selection tray, then Save to map them all to the slot. The selections play sequentially when the badge is scanned.
 - Badges are stored persistently in NVS and survive reboots
 
-The web UI fetches the current quickplay list from the Arrow server (`http://arrow.local:8000/quickplay`) to show which album/artist is mapped to each slot.
+The web UI fetches the current quickplay list from the Arrow server (`http://arrow.local:8000/quickplay`) to show which selections are mapped to each slot (the first item, plus a "+N more" count for multi-selection entries).
 
 ## REST API
 
