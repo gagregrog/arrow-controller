@@ -313,6 +313,7 @@
     let linkSlot = -1;
     let allArtists = null;
     let albumCache = {};
+    let expandedArtists = new Set();
     let linkSelection = [];
     let linkShuffle = false;
 
@@ -472,6 +473,7 @@
       const existing = quickplay[slotIndex] || {};
       linkShuffle = !!existing.shuffle;
       linkSelection = existing.items ? existing.items.map(i => ({...i})) : [];
+      expandedArtists.clear();  // every open starts with all artists collapsed
       document.getElementById('link-slot-label').textContent = '#' + slotIndex;
       document.getElementById('link-search').value = '';
       document.getElementById('link-results').innerHTML = '<div class="link-results-empty">Loading artists…</div>';
@@ -516,41 +518,45 @@
         <span class="check">${linkShuffle ? '✓' : ''}</span>
       </div>`;
       for (const artist of filtered) {
-        const cached = albumCache[artist]; // undefined=not fetched, null=error, []=no albums, [...]=has albums
-        const expanded = cached !== undefined;
+        const expanded = expandedArtists.has(artist);
         html += `<div class="link-item artist" onclick="toggleArtist(this,'${escapeAttr(artist)}')">
           <span>${escapeHtml(artist)}</span>
           <span class="expand-icon">${expanded ? '▾' : '▸'}</span>
         </div>`;
         if (expanded) {
-          html += albumRows(artist, cached);
+          html += albumRows(artist, albumCache[artist]); // null=error, []=none, [...]=albums
         }
       }
       container.innerHTML = html;
     }
 
     async function toggleArtist(el, artist) {
-      if (albumCache[artist] !== undefined) {
-        delete albumCache[artist];
+      if (expandedArtists.has(artist)) {
+        expandedArtists.delete(artist);
         renderLinkResults(document.getElementById('link-search').value);
         return;
       }
-      el.querySelector('.expand-icon').textContent = '…';
-      try {
-        const encoded = encodeURIComponent(artist);
-        const res = await fetch('/api/artists/' + encoded + '/albums');
-        console.log('[albums]', artist, res.status, res.ok);
-        if (res.ok) {
-          const data = await res.json();
-          console.log('[albums] data:', data);
-          albumCache[artist] = data.albums || [];
-        } else {
-          albumCache[artist] = null; // error sentinel — allows retry on next click
+      // Expanding: fetch albums unless we already have a good cached list.
+      // null is the error sentinel, so re-fetch on those too (retry).
+      if (albumCache[artist] === undefined || albumCache[artist] === null) {
+        el.querySelector('.expand-icon').textContent = '…';
+        try {
+          const encoded = encodeURIComponent(artist);
+          const res = await fetch('/api/artists/' + encoded + '/albums');
+          console.log('[albums]', artist, res.status, res.ok);
+          if (res.ok) {
+            const data = await res.json();
+            console.log('[albums] data:', data);
+            albumCache[artist] = data.albums || [];
+          } else {
+            albumCache[artist] = null; // error sentinel — allows retry on next expand
+          }
+        } catch (e) {
+          console.error('[albums] fetch error:', e);
+          albumCache[artist] = null;
         }
-      } catch (e) {
-        console.error('[albums] fetch error:', e);
-        albumCache[artist] = null;
       }
+      expandedArtists.add(artist);
       renderLinkResults(document.getElementById('link-search').value);
     }
 
