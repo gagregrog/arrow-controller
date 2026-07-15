@@ -90,6 +90,17 @@ void webUIBegin() {
             return true;
         }
 
+        // GET /api/stereo (exact) — proxy the Pi's stereo power status
+        if (req->method() == HTTP_GET && url == "/api/stereo") {
+            String body = arrowGetStereo();
+            if (body.isEmpty()) {
+                req->send(502, "application/json", "{\"error\":\"upstream unavailable\"}");
+            } else {
+                req->send(200, "application/json", body);
+            }
+            return true;
+        }
+
         // GET /api/artists (exact)
         if (req->method() == HTTP_GET && url == "/api/artists") {
             String body = arrowGetArtists();

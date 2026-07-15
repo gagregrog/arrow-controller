@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <ESPmDNS.h>
+#include <ArduinoJson.h>
 #include "ArrowClient.h"
 
 static const char* ARROW_HOST = "arrow";
@@ -82,4 +83,20 @@ int    arrowSendIR(const String& function, int count) {
     String path = "/ir/" + function;
     if (count > 1) path += "?count=" + String(count);
     return post(path);
+}
+
+String arrowGetStereo() { return get("/stereo"); }
+
+StereoStatus arrowStereoStatus() {
+    String body = arrowGetStereo();
+    if (body.isEmpty()) return STEREO_UNKNOWN;
+
+    JsonDocument doc;
+    if (deserializeJson(doc, body) != DeserializationError::Ok) {
+        Serial.println("[ArrowClient] /stereo: JSON parse failed");
+        return STEREO_UNKNOWN;
+    }
+    // "on" is true/false when the sensor has a reading, null when unavailable.
+    if (doc["on"].isNull()) return STEREO_UNKNOWN;
+    return doc["on"].as<bool>() ? STEREO_ON : STEREO_OFF;
 }
