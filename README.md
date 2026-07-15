@@ -77,6 +77,10 @@ Max brightness is set by `LED_MAX_BRIGHTNESS` in `Leds.cpp` (0–255, default 32
 
 After a badge triggers playback, further scans are ignored for a fixed window (`SCAN_COOLDOWN_MS` in `main.cpp`, default 10s) so a quickplay can't be interrupted the moment it starts. Scanning any badge during the window does nothing except show breathing purple until the window ends. The window is anchored to the accepted scan and is not extended by scans made during it. (This is separate from the PN532's short same-tag debounce in `NFC.cpp`.)
 
+### WiFi reconnect
+
+If the WiFi link drops after boot, the controller keeps trying to restore it instead of sitting idle. The core's auto-reconnect is enabled as a first line of defense; on top of that, `wifiReconnectLoop()` triggers a `WiFi.reconnect()` immediately when a drop is detected and then retries every `WIFI_RECONNECT_INTERVAL_MS` (in `WiFiConn.cpp`, default 10s) until the link is back. While disconnected the LEDs show breathing orange (see "WiFi lost" above).
+
 ## Setup
 
 ### `.env` file

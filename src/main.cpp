@@ -4,6 +4,7 @@
 #include <ArduinoOTA.h>
 #include "NFC.h"
 #include "ArrowClient.h"
+#include "WiFiConn.h"
 #include "Buttons.h"
 #include "Leds.h"
 #include "ScanCooldown.h"
@@ -33,6 +34,9 @@ void setup() {
     // Power down the radio between DTIM beacon intervals (~100ms) while
     // staying associated — cuts idle draw without adding reconnect latency.
     WiFi.setSleep(true);
+    // First line of defense against drops; wifiReconnectLoop() handles outages
+    // the core's auto-reconnect gives up on.
+    WiFi.setAutoReconnect(true);
     Serial.println("[WiFi] Connected");
 
     MDNS.begin("arrow-controller");
@@ -58,6 +62,8 @@ void loop() {
     wsLoop();
 
     uint32_t now = millis();
+
+    wifiReconnectLoop(now);
 
     int id = nfcLoop();
     if (id >= 0) {
