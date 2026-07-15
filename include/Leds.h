@@ -4,6 +4,7 @@ enum LEDState {
     LED_STATE_NORMAL,
     LED_STATE_WIFI_LOST,
     LED_STATE_WIFI_PORTAL,
+    LED_STATE_COOLDOWN,
 };
 
 void ledsBegin();

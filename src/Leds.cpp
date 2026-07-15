@@ -108,6 +108,7 @@ static void update() {
 
     if      (localState == LED_STATE_WIFI_LOST)   stepBreathe(ORANGE);
     else if (localState == LED_STATE_WIFI_PORTAL) stepBreathe(BLUE);
+    else if (localState == LED_STATE_COOLDOWN)    stepBreathe(PURPLE);
     else if (flashActive)                         stepFlash();
 }
 
