@@ -126,7 +126,7 @@ The web UI fetches the current quickplay list from the Arrow server (`http://arr
 | GET    | `/api/quickplay`      | Proxied quickplay list from Arrow server                               |
 | GET    | `/api/ir`             | Proxied IR function list from Arrow server — returns `[{name, class}]` |
 | POST   | `/api/ir/{function}`  | Send a named IR command via Arrow server                               |
-| GET    | `/api/stereo`         | Proxied stereo power status — `{"on":bool\|null,"sensor_enabled":bool}` |
+| GET    | `/api/stereo`         | Proxied stereo power status — `{"on":bool\|null,"voltage":float\|null,"sensor_enabled":bool}` |
 
 ## WebSocket
 

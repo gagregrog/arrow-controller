@@ -387,14 +387,16 @@
         if (!res.ok) throw new Error('status ' + res.status);
         const data = await res.json();
         // data.on is true (on), false (off), or null (sensor unavailable).
+        // data.voltage is present (volts) only in ads1115 mode — show it to aid tuning.
+        const volts = (typeof data.voltage === 'number') ? ` (${data.voltage.toFixed(3)} V)` : '';
         if (data.on === true) {
-          badge.textContent = 'Stereo is ON';
+          badge.textContent = 'Stereo is ON' + volts;
           badge.className = 'stereo-badge on';
         } else if (data.on === false) {
-          badge.textContent = 'Stereo is OFF';
+          badge.textContent = 'Stereo is OFF' + volts;
           badge.className = 'stereo-badge off';
         } else {
-          badge.textContent = 'Sensor unavailable';
+          badge.textContent = 'Sensor unavailable' + volts;
           badge.className = 'stereo-badge unknown';
         }
       } catch (e) {
