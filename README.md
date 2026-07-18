@@ -122,6 +122,7 @@ A cog in the top-right corner opens a **Settings** modal that manages everything
 
 - **Stereo** — check the live power-sensor status, and **Configure Sensor**: an editable form of every `stereo_sensor` value (enabled, I²C address, channel, gain, on/off thresholds). Each threshold has a **Tune** button that samples the sensor and fills in a suggested value; **Save** (enabled only when something changed) writes the whole block back to the Pi.
 - **Quickplay** — clear the quickplay list (behind a confirmation).
+- **Services** — restart the mopidy music service (behind a confirmation).
 - **System** — reboot or shut down the Raspberry Pi, each behind a confirmation dialog.
 
 ## REST API
@@ -140,6 +141,7 @@ All `/api/*` routes below the badge endpoints proxy to the Arrow server.
 | GET    | `/api/stereo/config`  | Proxied current sensor config for the settings form                   |
 | PUT    | `/api/stereo/config`  | Proxied sensor config save (enabled/address/channel/gain/thresholds)  |
 | POST   | `/api/stereo/sample`  | Proxied sensor sample burst for tuning — returns stats, writes nothing |
+| POST   | `/api/service/mopidy/restart` | Restart the mopidy music service                              |
 | POST   | `/api/system/reboot`  | Reboot the Raspberry Pi                                                |
 | POST   | `/api/system/shutdown`| Shut down the Raspberry Pi                                             |
 

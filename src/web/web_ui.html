@@ -386,6 +386,11 @@
       </div>
 
       <div class="settings-section">
+        <p class="settings-label">Services</p>
+        <button class="btn btn-secondary" onclick="confirmRestartMopidy()">Restart Mopidy</button>
+      </div>
+
+      <div class="settings-section">
         <p class="settings-label">System</p>
         <div class="settings-row">
           <button class="btn btn-secondary" onclick="confirmReboot()">Reboot Pi</button>
@@ -637,6 +642,12 @@
           await fetch('/api/quickplay', { method: 'DELETE' });
           await loadData();
         });
+    }
+
+    function confirmRestartMopidy() {
+      showConfirm('Restart Mopidy?',
+        'This restarts the music service on the Pi. Playback will stop briefly.',
+        'Restart', false, () => systemAction('/api/service/mopidy/restart', 'Mopidy restart'));
     }
 
     function confirmReboot() {

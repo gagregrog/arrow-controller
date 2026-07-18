@@ -109,6 +109,16 @@ void webUIBegin() {
         }
     });
 
+    // Restart the mopidy music service.
+    apiGetServer()->on("/api/service/mopidy/restart", HTTP_POST, [](AsyncWebServerRequest* request) {
+        int code = arrowRestartMopidy();
+        if (code >= 200 && code < 300) {
+            request->send(200, "application/json", "{\"ok\":true}");
+        } else {
+            request->send(502, "application/json", "{\"error\":\"upstream error\"}");
+        }
+    });
+
     // Reboot / shut down the Raspberry Pi.
     apiGetServer()->on("/api/system/reboot", HTTP_POST, [](AsyncWebServerRequest* request) {
         int code = arrowRebootPi();
