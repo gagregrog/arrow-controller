@@ -6,6 +6,7 @@
 #include <WiFi.h>
 
 static String _putQuickplayBody;
+static String _putStereoConfigBody;
 
 static String urlEncode(const String& s) {
     String out;
@@ -58,6 +59,9 @@ void webUIBegin() {
         if (req->method() == HTTP_PUT && req->url().startsWith("/api/quickplay/")) {
             if (index == 0) _putQuickplayBody.clear();
             _putQuickplayBody += String((char*)data, len);
+        } else if (req->method() == HTTP_PUT && req->url() == "/api/stereo/config") {
+            if (index == 0) _putStereoConfigBody.clear();
+            _putStereoConfigBody += String((char*)data, len);
         }
     });
 
@@ -67,6 +71,60 @@ void webUIBegin() {
             request->send(502, "application/json", "{\"error\":\"upstream unavailable\"}");
         } else {
             request->send(200, "application/json", body);
+        }
+    });
+
+    // Sensor configuration (GET current values for the settings form).
+    apiGetServer()->on("/api/stereo/config", HTTP_GET, [](AsyncWebServerRequest* request) {
+        String body = arrowGetStereoConfig();
+        if (body.isEmpty()) {
+            request->send(502, "application/json", "{\"error\":\"upstream unavailable\"}");
+        } else {
+            request->send(200, "application/json", body);
+        }
+    });
+
+    // Persist sensor configuration. Body is accumulated by the body handler above.
+    apiGetServer()->on("/api/stereo/config", HTTP_PUT, [](AsyncWebServerRequest* request) {
+        int code = arrowPutStereoConfig(_putStereoConfigBody);
+        if (code >= 200 && code < 300) {
+            request->send(200, "application/json", "{\"ok\":true}");
+        } else {
+            request->send(502, "application/json", "{\"error\":\"upstream error\"}");
+        }
+    });
+
+    // Run one sensor sample burst and return the stats JSON for tuning.
+    apiGetServer()->on("/api/stereo/sample", HTTP_POST, [](AsyncWebServerRequest* request) {
+        int count = 100;
+        if (request->hasParam("count")) {
+            count = request->getParam("count")->value().toInt();
+            if (count < 1) count = 1;
+        }
+        String body = arrowStereoSample(count);
+        if (body.isEmpty()) {
+            request->send(502, "application/json", "{\"error\":\"sensor unavailable\"}");
+        } else {
+            request->send(200, "application/json", body);
+        }
+    });
+
+    // Reboot / shut down the Raspberry Pi.
+    apiGetServer()->on("/api/system/reboot", HTTP_POST, [](AsyncWebServerRequest* request) {
+        int code = arrowRebootPi();
+        if (code >= 200 && code < 300) {
+            request->send(200, "application/json", "{\"ok\":true}");
+        } else {
+            request->send(502, "application/json", "{\"error\":\"upstream error\"}");
+        }
+    });
+
+    apiGetServer()->on("/api/system/shutdown", HTTP_POST, [](AsyncWebServerRequest* request) {
+        int code = arrowShutdownPi();
+        if (code >= 200 && code < 300) {
+            request->send(200, "application/json", "{\"ok\":true}");
+        } else {
+            request->send(502, "application/json", "{\"error\":\"upstream error\"}");
         }
     });
 

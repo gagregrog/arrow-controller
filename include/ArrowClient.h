@@ -25,3 +25,8 @@ String arrowGetIR();
 int    arrowSendIR(const String& function, int count = 1);
 String arrowGetStereo();          // raw JSON: {"on":bool|null,"sensor_enabled":bool}
 StereoStatus arrowStereoStatus(); // parsed tri-state from the sensor reading
+String arrowGetStereoConfig();               // GET /stereo/config -> config JSON
+int    arrowPutStereoConfig(const String& jsonBody); // PUT /stereo/config
+String arrowStereoSample(int count);         // POST /stereo/sample -> stats JSON ("" on failure)
+int    arrowRebootPi();                       // POST /system/reboot
+int    arrowShutdownPi();                     // POST /system/shutdown

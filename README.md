@@ -116,7 +116,17 @@ Badges are registered at runtime via the built-in web UI at `http://arrow-contro
 
 The web UI fetches the current quickplay list from the Arrow server (`http://arrow.local:8000/quickplay`) to show which selections are mapped to each slot (the first item, plus a "+N more" count for multi-selection entries).
 
+## Settings
+
+A cog in the top-right corner opens a **Settings** modal that manages everything on the Pi from the browser:
+
+- **Stereo** — check the live power-sensor status, and **Configure Sensor**: an editable form of every `stereo_sensor` value (enabled, I²C address, channel, gain, on/off thresholds). Each threshold has a **Tune** button that samples the sensor and fills in a suggested value; **Save** (enabled only when something changed) writes the whole block back to the Pi.
+- **Quickplay** — clear the quickplay list (behind a confirmation).
+- **System** — reboot or shut down the Raspberry Pi, each behind a confirmation dialog.
+
 ## REST API
+
+All `/api/*` routes below the badge endpoints proxy to the Arrow server.
 
 | Method | Path                  | Description                                                            |
 | ------ | --------------------- | ---------------------------------------------------------------------- |
@@ -127,6 +137,11 @@ The web UI fetches the current quickplay list from the Arrow server (`http://arr
 | GET    | `/api/ir`             | Proxied IR function list from Arrow server — returns `[{name, class}]` |
 | POST   | `/api/ir/{function}`  | Send a named IR command via Arrow server                               |
 | GET    | `/api/stereo`         | Proxied stereo power status — `{"on":bool\|null,"voltage":float\|null,"sensor_enabled":bool}` |
+| GET    | `/api/stereo/config`  | Proxied current sensor config for the settings form                   |
+| PUT    | `/api/stereo/config`  | Proxied sensor config save (enabled/address/channel/gain/thresholds)  |
+| POST   | `/api/stereo/sample`  | Proxied sensor sample burst for tuning — returns stats, writes nothing |
+| POST   | `/api/system/reboot`  | Reboot the Raspberry Pi                                                |
+| POST   | `/api/system/shutdown`| Shut down the Raspberry Pi                                             |
 
 ## WebSocket
 

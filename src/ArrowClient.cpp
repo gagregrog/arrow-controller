@@ -43,6 +43,24 @@ int arrowPreviousTrack()      { return post("/previous"); }
 int arrowRestartTrack()       { return post("/restart"); }
 int arrowRestartMopidy()      { return post("/service/mopidy/restart"); }
 
+// POST that returns the response body (not just the status code). Used where
+// the Pi replies with JSON we need — e.g. the sensor sample burst, which can
+// take a couple of seconds, so the timeout is caller-supplied.
+static String postForBody(const String& path, int timeoutMs) {
+    String base = arrowBaseUrl();
+    if (base.isEmpty()) return "";
+    HTTPClient http;
+    http.begin(base + path);
+    http.setTimeout(timeoutMs);
+    int code = http.POST("");
+    String result = (code == 200) ? http.getString() : "";
+    if (code != 200) {
+        Serial.printf("[ArrowClient] POST %s -> %d\n", path.c_str(), code);
+    }
+    http.end();
+    return result;
+}
+
 static String get(const String& path) {
     String base = arrowBaseUrl();
     if (base.isEmpty()) return "";
@@ -85,7 +103,16 @@ int    arrowSendIR(const String& function, int count) {
     return post(path);
 }
 
-String arrowGetStereo() { return get("/stereo"); }
+String arrowGetStereo()       { return get("/stereo"); }
+String arrowGetStereoConfig() { return get("/stereo/config"); }
+int    arrowPutStereoConfig(const String& body) { return put("/stereo/config", body); }
+int    arrowRebootPi()        { return post("/system/reboot"); }
+int    arrowShutdownPi()      { return post("/system/shutdown"); }
+
+String arrowStereoSample(int count) {
+    // The Pi takes ~100 readings (a few seconds); allow generous headroom.
+    return postForBody("/stereo/sample?count=" + String(count), 10000);
+}
 
 StereoStatus arrowStereoStatus() {
     String body = arrowGetStereo();

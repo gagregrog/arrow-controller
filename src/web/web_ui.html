@@ -250,10 +250,67 @@
     .ir-btn:active { background: #333; }
     .ir-btn.sending { opacity: 0.5; pointer-events: none; }
 
+    /* Settings cog */
+    .icon-btn {
+      background: none;
+      border: 1px solid #3a3a3a;
+      border-radius: 6px;
+      width: 2.2rem; height: 2.2rem;
+      cursor: pointer;
+      color: #ccc;
+      font-size: 1.1rem;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon-btn:hover { background: #2a2a2a; border-color: #888; color: #fff; }
+
+    /* Settings modal */
+    .settings-modal { max-width: 420px; max-height: 85vh; overflow-y: auto; overscroll-behavior: contain; }
+    .settings-section { margin-bottom: 1.25rem; }
+    .settings-section:last-of-type { margin-bottom: 0.5rem; }
+    .settings-label {
+      font-size: 0.75rem; font-weight: 600; color: #888;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      margin: 0 0 0.6rem;
+    }
+    .settings-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+
+    /* Sensor config panel */
+    .sensor-config {
+      margin-top: 0.85rem;
+      padding-top: 0.85rem;
+      border-top: 1px solid #3a3a3a;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .cfg-field { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; color: #bbb; }
+    .cfg-field > span { color: #999; }
+    .cfg-field input[type="text"], .cfg-field input[type="number"] {
+      background: #1a1a1a;
+      border: 1px solid #3a3a3a;
+      border-radius: 4px;
+      padding: 0.4rem 0.5rem;
+      color: #e0e0e0;
+      font-size: 0.9rem;
+      outline: none;
+      width: 100%;
+    }
+    .cfg-field input:focus { border-color: #555; }
+    .cfg-check { flex-direction: row; align-items: center; gap: 0.5rem; color: #e0e0e0; font-size: 0.9rem; }
+    .cfg-check input { width: auto; }
+    .cfg-tune-row { display: flex; gap: 0.5rem; align-items: stretch; }
+    .cfg-tune-row input { flex: 1; }
+    .tune-btn { white-space: nowrap; }
+    .tune-btn:disabled, #sensor-save-btn:disabled { opacity: 0.5; cursor: default; }
+    .sensor-msg { font-size: 0.8rem; color: #9aa; margin: 0.2rem 0 0; min-height: 1em; }
+    .sensor-msg.error { color: #e05555; }
+
     /* Mobile: drop action buttons to their own row */
     @media (max-width: 600px) {
       body { padding: 1rem; }
-      .header .btn-danger { flex-basis: 100%; }
       .badge-row .row-actions { flex-basis: 100%; margin-left: 0; }
     }
   </style>
@@ -265,32 +322,91 @@
       <span id="ws-status" class="ws-badge disconnected">disconnected</span>
       <span id="device-ip" class="ip-badge" style="display:none"></span>
     </div>
-    <button class="btn-danger" onclick="openClearModal()">Clear Quickplay</button>
+    <button class="icon-btn" id="settings-btn" onclick="openSettings()" aria-label="Settings" title="Settings">&#9881;</button>
   </div>
   <div id="ir-controller" style="display:none">
     <p class="section-title">Controller</p>
     <div id="ir-grid" class="ir-grid"></div>
   </div>
 
-  <div id="stereo-section" style="margin-bottom:1.5rem">
-    <p class="section-title" style="margin-bottom:0.75rem">Stereo</p>
-    <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
-      <button class="ir-btn" id="stereo-check-btn" onclick="checkStereo()">Check Stereo</button>
-      <span id="stereo-status" class="stereo-badge" style="display:none"></span>
-    </div>
-  </div>
-
   <p class="section-title" style="margin-bottom:0.75rem">Badges</p>
   <div id="badges" class="badge-list"><p class="empty-msg">Loading...</p></div>
 
-  <!-- Clear confirmation modal -->
-  <div id="clear-overlay" class="modal-overlay">
-    <div class="modal">
-      <h2>Clear Quickplay List?</h2>
-      <p>This will remove all quickplay entries from the Pi server. Registered badges will remain but will be unlinked.</p>
+  <!-- Settings modal -->
+  <div id="settings-overlay" class="modal-overlay">
+    <div class="modal settings-modal">
+      <h2>Settings</h2>
+
+      <div class="settings-section">
+        <p class="settings-label">Stereo</p>
+        <div class="settings-row">
+          <button class="btn btn-secondary" id="stereo-check-btn" onclick="checkStereo()">Check Status</button>
+          <span id="stereo-status" class="stereo-badge" style="display:none"></span>
+        </div>
+        <button class="btn btn-secondary" id="configure-sensor-btn" onclick="toggleSensorConfig()" style="margin-top:0.6rem;">Configure Sensor &#9656;</button>
+
+        <div id="sensor-config" class="sensor-config" style="display:none">
+          <label class="cfg-field cfg-check">
+            <input type="checkbox" id="cfg-enabled"> Enabled (drives auto power-on)
+          </label>
+          <label class="cfg-field">
+            <span>I&sup2;C address</span>
+            <input type="text" id="cfg-address" autocomplete="off" spellcheck="false" placeholder="0x48">
+          </label>
+          <label class="cfg-field">
+            <span>Channel (A0&ndash;A3)</span>
+            <input type="number" id="cfg-channel" min="0" max="3" step="1">
+          </label>
+          <label class="cfg-field">
+            <span>Gain (1, 2, 4, 8, 16)</span>
+            <input type="number" id="cfg-gain" step="1">
+          </label>
+          <div class="cfg-field">
+            <span>ON threshold (V)</span>
+            <div class="cfg-tune-row">
+              <input type="number" id="cfg-on" step="0.001">
+              <button class="btn btn-secondary tune-btn" onclick="tuneThreshold('on')">Tune</button>
+            </div>
+          </div>
+          <div class="cfg-field">
+            <span>OFF threshold (V)</span>
+            <div class="cfg-tune-row">
+              <input type="number" id="cfg-off" step="0.001">
+              <button class="btn btn-secondary tune-btn" onclick="tuneThreshold('off')">Tune</button>
+            </div>
+          </div>
+          <p id="sensor-tune-msg" class="sensor-msg"></p>
+          <button class="btn btn-primary" id="sensor-save-btn" onclick="saveSensorConfig()" disabled>Save</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <p class="settings-label">Quickplay</p>
+        <button class="btn-danger" onclick="confirmClearQuickplay()">Clear Quickplay</button>
+      </div>
+
+      <div class="settings-section">
+        <p class="settings-label">System</p>
+        <div class="settings-row">
+          <button class="btn btn-secondary" onclick="confirmReboot()">Reboot Pi</button>
+          <button class="btn btn-secondary" onclick="confirmShutdown()">Shut Down Pi</button>
+        </div>
+      </div>
+
       <div class="modal-actions">
-        <button class="btn btn-secondary" id="clear-dismiss">Cancel</button>
-        <button class="btn" style="background:#8b0000;color:#fff;" id="clear-confirm">Clear</button>
+        <button class="btn btn-secondary" onclick="closeSettings()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generic confirmation modal -->
+  <div id="confirm-overlay" class="modal-overlay">
+    <div class="modal">
+      <h2 id="confirm-title">Are you sure?</h2>
+      <p id="confirm-message"></p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="confirm-cancel">Cancel</button>
+        <button class="btn" id="confirm-ok">Confirm</button>
       </div>
     </div>
   </div>
@@ -481,18 +597,194 @@
       await loadData();
     }
 
-    // ── Clear modal ───────────────────────────────────────────────────────────
+    // ── Settings modal ──────────────────────────────────────────────────────
 
-    function openClearModal() {
-      document.getElementById('clear-overlay').classList.add('visible');
+    function openSettings() {
+      document.getElementById('settings-overlay').classList.add('visible');
     }
-    document.getElementById('clear-dismiss').addEventListener('click', () => {
-      document.getElementById('clear-overlay').classList.remove('visible');
+    function closeSettings() {
+      document.getElementById('settings-overlay').classList.remove('visible');
+    }
+
+    // ── Generic confirm modal ───────────────────────────────────────────────
+
+    let confirmCallback = null;
+    function showConfirm(title, message, okLabel, danger, onConfirm) {
+      document.getElementById('confirm-title').textContent = title;
+      document.getElementById('confirm-message').textContent = message;
+      const ok = document.getElementById('confirm-ok');
+      ok.textContent = okLabel;
+      ok.style.background = danger ? '#8b0000' : '#0066cc';
+      ok.style.color = '#fff';
+      confirmCallback = onConfirm;
+      document.getElementById('confirm-overlay').classList.add('visible');
+    }
+    document.getElementById('confirm-cancel').addEventListener('click', () => {
+      confirmCallback = null;
+      document.getElementById('confirm-overlay').classList.remove('visible');
     });
-    document.getElementById('clear-confirm').addEventListener('click', async () => {
-      document.getElementById('clear-overlay').classList.remove('visible');
-      await fetch('/api/quickplay', { method: 'DELETE' });
-      await loadData();
+    document.getElementById('confirm-ok').addEventListener('click', async () => {
+      const cb = confirmCallback;
+      confirmCallback = null;
+      document.getElementById('confirm-overlay').classList.remove('visible');
+      if (cb) await cb();
+    });
+
+    function confirmClearQuickplay() {
+      showConfirm('Clear Quickplay List?',
+        'This will remove all quickplay entries from the Pi server. Registered badges will remain but will be unlinked.',
+        'Clear', true, async () => {
+          await fetch('/api/quickplay', { method: 'DELETE' });
+          await loadData();
+        });
+    }
+
+    function confirmReboot() {
+      showConfirm('Reboot the Raspberry Pi?',
+        'The server will be unreachable for ~30s while it restarts.',
+        'Reboot', true, () => systemAction('/api/system/reboot', 'Reboot'));
+    }
+
+    function confirmShutdown() {
+      showConfirm('Shut Down the Raspberry Pi?',
+        'The server will power off and stay off until it is manually powered on again.',
+        'Shut Down', true, () => systemAction('/api/system/shutdown', 'Shutdown'));
+    }
+
+    async function systemAction(path, label) {
+      try {
+        const res = await fetch(path, { method: 'POST' });
+        if (res.status === 401) {
+          alert(label + ' failed: the Pi needs passwordless sudo for this command. See the piserver README.');
+        } else if (!res.ok) {
+          alert(label + ' request failed (status ' + res.status + ').');
+        }
+      } catch (e) {
+        // The connection commonly drops as the Pi goes down — that's expected.
+      }
+    }
+
+    // ── Sensor configuration ────────────────────────────────────────────────
+
+    let sensorConfigLoaded = false;
+    let sensorBaseline = null;
+
+    async function toggleSensorConfig() {
+      const panel = document.getElementById('sensor-config');
+      const btn = document.getElementById('configure-sensor-btn');
+      if (panel.style.display !== 'none') {
+        panel.style.display = 'none';
+        btn.innerHTML = 'Configure Sensor &#9656;';
+        return;
+      }
+      panel.style.display = '';
+      btn.innerHTML = 'Configure Sensor &#9662;';
+      if (!sensorConfigLoaded) await loadSensorConfig();
+    }
+
+    function sensorFormValues() {
+      return {
+        enabled: document.getElementById('cfg-enabled').checked,
+        address: document.getElementById('cfg-address').value.trim(),
+        channel: document.getElementById('cfg-channel').value,
+        gain: document.getElementById('cfg-gain').value,
+        on_threshold: document.getElementById('cfg-on').value,
+        off_threshold: document.getElementById('cfg-off').value,
+      };
+    }
+
+    function sensorIsDirty() {
+      if (!sensorBaseline) return false;
+      const cur = sensorFormValues();
+      return Object.keys(cur).some(k => String(cur[k]) !== String(sensorBaseline[k]));
+    }
+
+    function refreshSensorSaveState() {
+      document.getElementById('sensor-save-btn').disabled = !sensorIsDirty();
+    }
+
+    async function loadSensorConfig() {
+      const msg = document.getElementById('sensor-tune-msg');
+      try {
+        const res = await fetch('/api/stereo/config');
+        if (!res.ok) throw new Error('status ' + res.status);
+        const cfg = await res.json();
+        document.getElementById('cfg-enabled').checked = !!cfg.enabled;
+        document.getElementById('cfg-address').value = cfg.address ?? '';
+        document.getElementById('cfg-channel').value = cfg.channel ?? 0;
+        document.getElementById('cfg-gain').value = cfg.gain ?? 1;
+        document.getElementById('cfg-on').value = cfg.on_threshold ?? '';
+        document.getElementById('cfg-off').value = cfg.off_threshold ?? '';
+        sensorBaseline = sensorFormValues();
+        sensorConfigLoaded = true;
+        msg.className = 'sensor-msg';
+        msg.textContent = '';
+      } catch (e) {
+        msg.className = 'sensor-msg error';
+        msg.textContent = 'Failed to load sensor config.';
+      }
+      refreshSensorSaveState();
+    }
+
+    async function tuneThreshold(which) {
+      const msg = document.getElementById('sensor-tune-msg');
+      const btns = document.querySelectorAll('.tune-btn');
+      btns.forEach(b => b.disabled = true);
+      msg.className = 'sensor-msg';
+      msg.textContent = 'Sampling… hold the stereo in its ' + which.toUpperCase() + ' state.';
+      try {
+        const res = await fetch('/api/stereo/sample', { method: 'POST' });
+        if (!res.ok) throw new Error('status ' + res.status);
+        const s = await res.json();
+        const suggested = which === 'on' ? s.as_on_threshold : s.as_off_threshold;
+        document.getElementById(which === 'on' ? 'cfg-on' : 'cfg-off').value = suggested;
+        msg.textContent = `Sampled ${s.count}: mean ${s.mean} V, range ${s.min}–${s.max} V → `
+          + `${which.toUpperCase()} threshold ${suggested} V`;
+        refreshSensorSaveState();
+      } catch (e) {
+        msg.className = 'sensor-msg error';
+        msg.textContent = 'Sampling failed — is the ADC connected?';
+      } finally {
+        btns.forEach(b => b.disabled = false);
+      }
+    }
+
+    async function saveSensorConfig() {
+      const btn = document.getElementById('sensor-save-btn');
+      const msg = document.getElementById('sensor-tune-msg');
+      const v = sensorFormValues();
+      const payload = {
+        enabled: v.enabled,
+        address: v.address,
+        channel: parseInt(v.channel, 10),
+        gain: parseInt(v.gain, 10),
+        on_threshold: parseFloat(v.on_threshold),
+        off_threshold: parseFloat(v.off_threshold),
+      };
+      btn.disabled = true;
+      msg.className = 'sensor-msg';
+      msg.textContent = 'Saving…';
+      try {
+        const res = await fetch('/api/stereo/config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error('status ' + res.status);
+        sensorBaseline = sensorFormValues();
+        msg.textContent = 'Saved.';
+      } catch (e) {
+        msg.className = 'sensor-msg error';
+        msg.textContent = 'Save failed.';
+      }
+      refreshSensorSaveState();
+    }
+
+    // Enable the Save button as soon as any field diverges from what was loaded.
+    ['cfg-enabled','cfg-address','cfg-channel','cfg-gain','cfg-on','cfg-off'].forEach(id => {
+      const el = document.getElementById(id);
+      el.addEventListener('input', refreshSensorSaveState);
+      el.addEventListener('change', refreshSensorSaveState);
     });
 
     // ── Register modal ────────────────────────────────────────────────────────
