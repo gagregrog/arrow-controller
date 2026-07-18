@@ -84,15 +84,10 @@ void webUIBegin() {
         }
     });
 
-    // Persist sensor configuration. Body is accumulated by the body handler above.
-    apiGetServer()->on("/api/stereo/config", HTTP_PUT, [](AsyncWebServerRequest* request) {
-        int code = arrowPutStereoConfig(_putStereoConfigBody);
-        if (code >= 200 && code < 300) {
-            request->send(200, "application/json", "{\"ok\":true}");
-        } else {
-            request->send(502, "application/json", "{\"error\":\"upstream error\"}");
-        }
-    });
+    // Note: PUT /api/stereo/config is handled in the notFound handler below, not
+    // as a fixed route. ESPAsyncWebServer only feeds request bodies to the global
+    // body handler when the request falls through to the catch-all path; a fixed
+    // .on() route would receive an empty body (the Pi would then 422).
 
     // Run one sensor sample burst and return the stats JSON for tuning.
     apiGetServer()->on("/api/stereo/sample", HTTP_POST, [](AsyncWebServerRequest* request) {
@@ -196,6 +191,17 @@ void webUIBegin() {
         if (req->method() == HTTP_POST && url.startsWith("/api/quickplay/")) {
             int idx = url.substring(15).toInt();
             int code = arrowQuickPlay(idx);
+            if (code >= 200 && code < 300) {
+                req->send(200, "application/json", "{\"ok\":true}");
+            } else {
+                req->send(502, "application/json", "{\"error\":\"upstream error\"}");
+            }
+            return true;
+        }
+
+        // PUT /api/stereo/config — body accumulated by the global body handler
+        if (req->method() == HTTP_PUT && url == "/api/stereo/config") {
+            int code = arrowPutStereoConfig(_putStereoConfigBody);
             if (code >= 200 && code < 300) {
                 req->send(200, "application/json", "{\"ok\":true}");
             } else {

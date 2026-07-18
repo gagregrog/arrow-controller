@@ -106,10 +106,15 @@
       border-radius: 999px;
       font-weight: 500;
       border: 1px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
     }
     .stereo-badge.on { background: #1a3a1a; border-color: #2a7a2a; color: #4caf50; }
     .stereo-badge.off { background: #2e1a1a; border-color: #5a2a2a; color: #e05555; }
     .stereo-badge.unknown { background: #2a2a1a; border-color: #5a5a2a; color: #d0b050; }
+    .stereo-badge.error { background: #2e1a1a; border-color: #7a2a2a; color: #ff7676; }
+    .stereo-badge.checking { background: #22262e; border-color: #3a4453; color: #9ab; }
 
     /* Shared modal styles */
     .modal-overlay {
@@ -152,6 +157,7 @@
       cursor: pointer;
       font-size: 0.9rem;
     }
+    .btn:disabled { opacity: 0.6; cursor: default; }
     .btn-primary { background: #0066cc; color: #fff; }
     .btn-primary:hover { background: #0077ee; }
     .btn-secondary { background: #3a3a3a; color: #ccc; }
@@ -268,6 +274,19 @@
 
     /* Settings modal */
     .settings-modal { max-width: 420px; max-height: 85vh; overflow-y: auto; overscroll-behavior: contain; }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem; }
+    .modal-header h2 { margin: 0; }
+    .modal-x {
+      background: none;
+      border: none;
+      color: #999;
+      font-size: 1.6rem;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 0.25rem;
+      flex-shrink: 0;
+    }
+    .modal-x:hover { color: #fff; }
     .settings-section { margin-bottom: 1.25rem; }
     .settings-section:last-of-type { margin-bottom: 0.5rem; }
     .settings-label {
@@ -277,11 +296,8 @@
     }
     .settings-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
 
-    /* Sensor config panel */
+    /* Sensor config panel (its own view within the settings modal) */
     .sensor-config {
-      margin-top: 0.85rem;
-      padding-top: 0.85rem;
-      border-top: 1px solid #3a3a3a;
       display: flex;
       flex-direction: column;
       gap: 0.6rem;
@@ -335,71 +351,74 @@
   <!-- Settings modal -->
   <div id="settings-overlay" class="modal-overlay">
     <div class="modal settings-modal">
-      <h2>Settings</h2>
+      <div class="modal-header">
+        <h2 id="settings-title">Settings</h2>
+        <button class="modal-x" id="settings-corner-btn" onclick="settingsCornerAction()" aria-label="Close">&times;</button>
+      </div>
 
-      <div class="settings-section">
-        <p class="settings-label">Stereo</p>
-        <div class="settings-row">
-          <button class="btn btn-secondary" id="stereo-check-btn" onclick="checkStereo()">Check Status</button>
-          <span id="stereo-status" class="stereo-badge" style="display:none"></span>
-        </div>
-        <button class="btn btn-secondary" id="configure-sensor-btn" onclick="toggleSensorConfig()" style="margin-top:0.6rem;">Configure Sensor &#9656;</button>
-
-        <div id="sensor-config" class="sensor-config" style="display:none">
-          <label class="cfg-field cfg-check">
-            <input type="checkbox" id="cfg-enabled"> Enabled (drives auto power-on)
-          </label>
-          <label class="cfg-field">
-            <span>I&sup2;C address</span>
-            <input type="text" id="cfg-address" autocomplete="off" spellcheck="false" placeholder="0x48">
-          </label>
-          <label class="cfg-field">
-            <span>Channel (A0&ndash;A3)</span>
-            <input type="number" id="cfg-channel" min="0" max="3" step="1">
-          </label>
-          <label class="cfg-field">
-            <span>Gain (1, 2, 4, 8, 16)</span>
-            <input type="number" id="cfg-gain" step="1">
-          </label>
-          <div class="cfg-field">
-            <span>ON threshold (V)</span>
-            <div class="cfg-tune-row">
-              <input type="number" id="cfg-on" step="0.001">
-              <button class="btn btn-secondary tune-btn" onclick="tuneThreshold('on')">Tune</button>
-            </div>
+      <!-- Main settings view -->
+      <div id="settings-main">
+        <div class="settings-section">
+          <p class="settings-label">Stereo</p>
+          <div class="settings-row">
+            <button class="btn btn-secondary" id="stereo-check-btn" onclick="checkStereo()">Check Status</button>
+            <span id="stereo-status" class="stereo-badge" style="display:none"></span>
           </div>
-          <div class="cfg-field">
-            <span>OFF threshold (V)</span>
-            <div class="cfg-tune-row">
-              <input type="number" id="cfg-off" step="0.001">
-              <button class="btn btn-secondary tune-btn" onclick="tuneThreshold('off')">Tune</button>
-            </div>
+          <button class="btn btn-secondary" id="configure-sensor-btn" onclick="showSensorConfig()" style="margin-top:0.6rem;">Configure Sensor</button>
+        </div>
+
+        <div class="settings-section">
+          <p class="settings-label">Quickplay</p>
+          <button class="btn-danger" onclick="confirmClearQuickplay()">Clear Quickplay</button>
+        </div>
+
+        <div class="settings-section">
+          <p class="settings-label">Services</p>
+          <button class="btn btn-secondary" onclick="confirmRestartMopidy()">Restart Mopidy</button>
+        </div>
+
+        <div class="settings-section">
+          <p class="settings-label">System</p>
+          <div class="settings-row">
+            <button class="btn btn-secondary" onclick="confirmReboot()">Reboot Pi</button>
+            <button class="btn btn-secondary" onclick="confirmShutdown()">Shut Down Pi</button>
           </div>
-          <p id="sensor-tune-msg" class="sensor-msg"></p>
-          <button class="btn btn-primary" id="sensor-save-btn" onclick="saveSensorConfig()" disabled>Save</button>
         </div>
       </div>
 
-      <div class="settings-section">
-        <p class="settings-label">Quickplay</p>
-        <button class="btn-danger" onclick="confirmClearQuickplay()">Clear Quickplay</button>
-      </div>
-
-      <div class="settings-section">
-        <p class="settings-label">Services</p>
-        <button class="btn btn-secondary" onclick="confirmRestartMopidy()">Restart Mopidy</button>
-      </div>
-
-      <div class="settings-section">
-        <p class="settings-label">System</p>
-        <div class="settings-row">
-          <button class="btn btn-secondary" onclick="confirmReboot()">Reboot Pi</button>
-          <button class="btn btn-secondary" onclick="confirmShutdown()">Shut Down Pi</button>
+      <!-- Sensor configuration view (shown in place of the main view) -->
+      <div id="sensor-config" class="sensor-config" style="display:none">
+        <label class="cfg-field cfg-check">
+          <input type="checkbox" id="cfg-enabled"> Enabled (drives auto power-on)
+        </label>
+        <label class="cfg-field">
+          <span>I&sup2;C address</span>
+          <input type="text" id="cfg-address" autocomplete="off" spellcheck="false" placeholder="0x48">
+        </label>
+        <label class="cfg-field">
+          <span>Channel (A0&ndash;A3)</span>
+          <input type="number" id="cfg-channel" min="0" max="3" step="1">
+        </label>
+        <label class="cfg-field">
+          <span>Gain (1, 2, 4, 8, 16)</span>
+          <input type="number" id="cfg-gain" step="1">
+        </label>
+        <div class="cfg-field">
+          <span>ON threshold (V)</span>
+          <div class="cfg-tune-row">
+            <input type="number" id="cfg-on" step="0.001">
+            <button class="btn btn-secondary tune-btn" onclick="tuneThreshold('on')">Tune</button>
+          </div>
         </div>
-      </div>
-
-      <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="closeSettings()">Close</button>
+        <div class="cfg-field">
+          <span>OFF threshold (V)</span>
+          <div class="cfg-tune-row">
+            <input type="number" id="cfg-off" step="0.001">
+            <button class="btn btn-secondary tune-btn" onclick="tuneThreshold('off')">Tune</button>
+          </div>
+        </div>
+        <p id="sensor-tune-msg" class="sensor-msg"></p>
+        <button class="btn btn-primary" id="sensor-save-btn" onclick="saveSensorConfig()" disabled>Save</button>
       </div>
     </div>
   </div>
@@ -502,7 +521,10 @@
     async function checkStereo() {
       const btn = document.getElementById('stereo-check-btn');
       const badge = document.getElementById('stereo-status');
-      btn.classList.add('sending');
+      btn.disabled = true;
+      badge.style.display = '';
+      badge.className = 'stereo-badge checking';
+      badge.innerHTML = '<span class="spinner"></span>Checking…';
       try {
         const res = await fetch('/api/stereo');
         if (!res.ok) throw new Error('status ' + res.status);
@@ -522,11 +544,10 @@
         }
       } catch (e) {
         console.error('[stereo] fetch error:', e);
-        badge.textContent = 'Check failed';
-        badge.className = 'stereo-badge unknown';
+        badge.textContent = 'Check failed — try again';
+        badge.className = 'stereo-badge error';
       } finally {
-        badge.style.display = '';
-        btn.classList.remove('sending');
+        btn.disabled = false;
       }
     }
 
@@ -604,11 +625,49 @@
 
     // ── Settings modal ──────────────────────────────────────────────────────
 
+    let settingsView = 'main';   // 'main' | 'sensor'
+
     function openSettings() {
+      showSettingsMain();   // always open on the main view
       document.getElementById('settings-overlay').classList.add('visible');
     }
     function closeSettings() {
       document.getElementById('settings-overlay').classList.remove('visible');
+    }
+
+    // The top-right corner button closes the modal on the main view, or steps
+    // back to the main view from the sensor-config view.
+    function settingsCornerAction() {
+      if (settingsView === 'sensor') showSettingsMain();
+      else closeSettings();
+    }
+
+    function setCornerButton(mode) {
+      const btn = document.getElementById('settings-corner-btn');
+      if (mode === 'back') {
+        btn.innerHTML = '&#8592;';            // ← back arrow
+        btn.setAttribute('aria-label', 'Back');
+      } else {
+        btn.innerHTML = '&times;';            // × close
+        btn.setAttribute('aria-label', 'Close');
+      }
+    }
+
+    function showSettingsMain() {
+      settingsView = 'main';
+      document.getElementById('sensor-config').style.display = 'none';
+      document.getElementById('settings-main').style.display = '';
+      document.getElementById('settings-title').textContent = 'Settings';
+      setCornerButton('close');
+    }
+
+    async function showSensorConfig() {
+      settingsView = 'sensor';
+      document.getElementById('settings-main').style.display = 'none';
+      document.getElementById('sensor-config').style.display = '';
+      document.getElementById('settings-title').textContent = 'Configure Sensor';
+      setCornerButton('back');
+      if (!sensorConfigLoaded) await loadSensorConfig();
     }
 
     // ── Generic confirm modal ───────────────────────────────────────────────
@@ -679,19 +738,6 @@
 
     let sensorConfigLoaded = false;
     let sensorBaseline = null;
-
-    async function toggleSensorConfig() {
-      const panel = document.getElementById('sensor-config');
-      const btn = document.getElementById('configure-sensor-btn');
-      if (panel.style.display !== 'none') {
-        panel.style.display = 'none';
-        btn.innerHTML = 'Configure Sensor &#9656;';
-        return;
-      }
-      panel.style.display = '';
-      btn.innerHTML = 'Configure Sensor &#9662;';
-      if (!sensorConfigLoaded) await loadSensorConfig();
-    }
 
     function sensorFormValues() {
       return {
