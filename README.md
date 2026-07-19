@@ -116,6 +116,20 @@ Badges are registered at runtime via the built-in web UI at `http://arrow-contro
 
 The web UI fetches the current quickplay list from the Arrow server (`http://arrow.local:8000/quickplay`) to show which selections are mapped to each slot (the first item, plus a "+N more" count for multi-selection entries).
 
+### Connection status
+
+The status pill in the header reflects the **ESP32 → Pi** link — the hop that governs most features — rather than the browser → ESP32 WebSocket alone:
+
+- **connected** (green) — the browser reaches the ESP32 and the ESP32 reaches the Pi.
+- **server unreachable** (amber) — the WebSocket is up but Pi-proxied calls are failing (the Pi is down or unreachable). The badge list shows a warning and marks each slot's link "unavailable" instead of misleadingly showing every badge as "(unlinked)".
+- **disconnected** (red) — the browser can't reach the ESP32 at all (WebSocket closed).
+
+Reachability is derived from the proxied `/api/quickplay` call and re-checked periodically, so the pill recovers on its own once the Pi comes back.
+
+### Controller
+
+When the Arrow server exposes IR commands, the web UI renders them as buttons grouped by `class`, using each command's `label` for display. The list is cached in `localStorage` and painted optimistically on reload, then reconciled against the live `/api/ir` response. When the server exposes `volumeUp`/`volumeDown`, the UI also appends **3 Up** / **3 Down** buttons that send the same command as a larger step for fast, coarse volume changes.
+
 ## Settings
 
 A cog in the top-right corner opens a **Settings** modal that manages everything on the Pi from the browser:
@@ -135,7 +149,7 @@ All `/api/*` routes below the badge endpoints proxy to the Arrow server.
 | POST   | `/api/badges`         | Register a new badge `{"uid":"AA:BB:CC:DD"}`                           |
 | DELETE | `/api/badges/{index}` | Remove badge at index                                                  |
 | GET    | `/api/quickplay`      | Proxied quickplay list from Arrow server                               |
-| GET    | `/api/ir`             | Proxied IR function list from Arrow server — returns `[{name, class}]` |
+| GET    | `/api/ir`             | Proxied IR function list from Arrow server — returns `[{name, label, class}]` |
 | POST   | `/api/ir/{function}`  | Send a named IR command via Arrow server                               |
 | GET    | `/api/stereo`         | Proxied stereo power status — `{"on":bool\|null,"voltage":float\|null,"sensor_enabled":bool}` |
 | GET    | `/api/stereo/config`  | Proxied current sensor config for the settings form                   |

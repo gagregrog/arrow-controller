@@ -38,6 +38,8 @@
     .uid { font-family: monospace; font-size: 0.85rem; color: #aaa; flex: 1; }
     .label { flex: 2; font-size: 0.9rem; }
     .label.unmapped { color: #666; font-style: italic; }
+    /* Pi unreachable: quickplay state is unknown, not empty — don't imply "unlinked". */
+    .label.unavailable { color: #7a7a6a; font-style: italic; }
     .label.loading { color: #888; font-style: italic; display: inline-flex; align-items: center; gap: 0.4rem; }
     .spinner {
       display: inline-block;
@@ -82,6 +84,15 @@
     }
     .remove-btn:hover { background: #3a1a1a; border-color: #e05555; }
     .empty-msg { color: #666; font-style: italic; }
+    .pi-warning {
+      color: #d0b050;
+      background: #2a2a1a;
+      border: 1px solid #5a5a2a;
+      border-radius: 6px;
+      padding: 0.6rem 0.8rem;
+      margin: 0 0 0.5rem;
+      font-size: 0.9rem;
+    }
     .ws-badge {
       font-size: 0.72rem;
       padding: 0.18rem 0.55rem;
@@ -91,6 +102,8 @@
     }
     .ws-badge.connected { background: #1a3a1a; border-color: #2a7a2a; color: #4caf50; }
     .ws-badge.disconnected { background: #2e1a1a; border-color: #5a2a2a; color: #e05555; }
+    /* ESP32 reachable but the Pi server isn't — features are degraded, not dead. */
+    .ws-badge.degraded { background: #2a2a1a; border-color: #5a5a2a; color: #d0b050; }
     .ip-badge {
       font-size: 0.72rem;
       padding: 0.18rem 0.55rem;
@@ -467,6 +480,11 @@
   <script>
     let badges = [];
     let quickplay = [];
+    // Connectivity is two separate links: the browser↔ESP32 WebSocket, and the
+    // ESP32↔Pi HTTP hop. The status pill reflects the Pi hop (what governs most
+    // features); a dropped WebSocket also forces it to "disconnected".
+    let wsConnected = false;
+    let piReachable = true;   // optimistic until a proxied call proves otherwise
     let pendingUID = null;
     let linkSlot = -1;
     let allArtists = null;
@@ -477,36 +495,68 @@
 
     // ── IR Controller ─────────────────────────────────────────────────────────
 
+    const IR_CACHE_KEY = 'arrow.ir.v1';
+    // One press of a volume button steps 3 increments, matching the physical
+    // buttons. The "3×" buttons triple that for coarse, fast adjustment.
+    const VOL_STEP = 3;
+    const VOL_FAST = VOL_STEP * 3;
+
+    function renderIR(items) {
+      const section = document.getElementById('ir-controller');
+      if (!Array.isArray(items) || items.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+      // Preserve server order while grouping by class.
+      const groups = {};
+      const order = [];
+      for (const it of items) {
+        if (!it || !it.name) continue;
+        const key = it.class || '';
+        if (!(key in groups)) { groups[key] = []; order.push(key); }
+        groups[key].push(it);
+      }
+      const irBtn = (fn, count, text) =>
+        `<button class="ir-btn" onclick="sendIR(this,'${escapeAttr(fn)}',${count})">${escapeHtml(text)}</button>`;
+
+      document.getElementById('ir-grid').innerHTML = order.map(cls => {
+        const list = groups[cls];
+        const header = cls ? `<p class="ir-class">${escapeHtml(cls)}</p>` : '';
+        let buttons = list.map(it => {
+          const count = (it.name === 'volumeUp' || it.name === 'volumeDown') ? VOL_STEP : 1;
+          return irBtn(it.name, count, it.label || it.name);
+        }).join('');
+        // Append fast triple-step volume buttons beside the real ones, when the
+        // server exposes the underlying commands.
+        if (list.some(it => it.name === 'volumeDown')) buttons += irBtn('volumeDown', VOL_FAST, '3 Down');
+        if (list.some(it => it.name === 'volumeUp'))   buttons += irBtn('volumeUp', VOL_FAST, '3 Up');
+        return header + buttons;
+      }).join('');
+      section.style.display = '';
+    }
+
     async function loadIR() {
+      // Optimistically paint from the last-known list so the controls appear
+      // instantly on reload; the live fetch below reconciles it.
+      try {
+        const cached = localStorage.getItem(IR_CACHE_KEY);
+        if (cached) renderIR(JSON.parse(cached));
+      } catch (e) { /* ignore malformed cache */ }
+
       try {
         const res = await fetch('/api/ir');
-        if (!res.ok) return;
+        if (!res.ok) return;                 // keep the cached view on error
         const items = await res.json();
-        if (!Array.isArray(items) || items.length === 0) return;
-        const groups = {};
-        for (const {name, class: cls} of items) {
-          const key = cls || '';
-          (groups[key] = groups[key] || []).push(name);
-        }
-        const section = document.getElementById('ir-controller');
-        document.getElementById('ir-grid').innerHTML = Object.entries(groups)
-          .map(([cls, names]) => {
-            const header = cls ? `<p class="ir-class">${escapeHtml(cls)}</p>` : '';
-            const buttons = names.map(n => `<button class="ir-btn" onclick="sendIR('${escapeAttr(n)}')">${escapeHtml(n)}</button>`).join('');
-            return header + buttons;
-          })
-          .join('');
-        section.style.display = '';
+        if (!Array.isArray(items)) return;
+        localStorage.setItem(IR_CACHE_KEY, JSON.stringify(items));
+        renderIR(items);
       } catch (e) {
         console.error('[IR] fetch error:', e);
       }
     }
 
-    async function sendIR(fn) {
-      const btn = [...document.querySelectorAll('.ir-btn')].find(b => b.textContent === fn);
+    async function sendIR(btn, fn, count) {
       if (btn) btn.classList.add('sending');
-      // Volume commands step 3 increments per press, matching the physical buttons.
-      const count = (fn === 'volumeUp' || fn === 'volumeDown') ? 3 : 1;
       let path = '/api/ir/' + encodeURIComponent(fn);
       if (count > 1) path += '?count=' + count;
       try {
@@ -553,24 +603,48 @@
 
     // ── Data loading ──────────────────────────────────────────────────────────
 
+    // The pill reflects the ESP32↔Pi hop; a dead WebSocket (browser↔ESP32) wins,
+    // since nothing is reachable then.
+    function updateStatusPill() {
+      const el = document.getElementById('ws-status');
+      if (!wsConnected) {
+        el.textContent = 'disconnected';
+        el.className = 'ws-badge disconnected';
+      } else if (!piReachable) {
+        el.textContent = 'server unreachable';
+        el.className = 'ws-badge degraded';
+      } else {
+        el.textContent = 'connected';
+        el.className = 'ws-badge connected';
+      }
+    }
+
     async function loadData() {
+      // /api/badges is served locally from the ESP32, so it works even when the
+      // Pi is down. /api/quickplay is proxied to the Pi and 502s when it's
+      // unreachable — that's our signal for Pi reachability.
       try {
-        const [br, qr] = await Promise.all([
-          fetch('/api/badges'),
-          fetch('/api/quickplay')
-        ]);
+        const br = await fetch('/api/badges');
         badges = br.ok ? (await br.json()).badges : [];
-        const qdata = qr.ok ? (await qr.json()) : null;
-        console.log('[quickplay] GET response:', JSON.stringify(qdata));
-        if (Array.isArray(qdata)) {
-          quickplay = qdata;
-        } else {
-          quickplay = qdata ? (qdata.quickplay || []) : [];
-        }
       } catch (e) {
         badges = [];
-        quickplay = [];
       }
+      try {
+        const qr = await fetch('/api/quickplay');
+        if (qr.ok) {
+          const qdata = await qr.json();
+          quickplay = Array.isArray(qdata) ? qdata : (qdata.quickplay || []);
+          piReachable = true;
+        } else {
+          // 502 = ESP32 reached but the Pi didn't answer. Don't clobber the last
+          // known quickplay data with []; just mark the Pi unreachable so the UI
+          // shows "unknown" rather than "unlinked".
+          piReachable = false;
+        }
+      } catch (e) {
+        piReachable = false;
+      }
+      updateStatusPill();
       render();
     }
 
@@ -599,12 +673,24 @@
         container.innerHTML = '<p class="empty-msg">No badges registered. Scan a badge to register it.</p>';
         return;
       }
-      container.innerHTML = badges.map((uid, i) => {
-        const label = qpLabel(quickplay[i]);
+      // When the Pi is unreachable we don't know the quickplay links, so show a
+      // banner and render each label as "unknown" rather than "(unlinked)".
+      const banner = piReachable ? '' :
+        `<p class="pi-warning">⚠ Can't reach the Pi server — quickplay status unavailable.</p>`;
+      container.innerHTML = banner + badges.map((uid, i) => {
+        const label = piReachable ? qpLabel(quickplay[i]) : null;
+        let labelClass, labelText;
+        if (!piReachable) {
+          labelClass = ' unavailable'; labelText = 'unavailable';
+        } else if (label) {
+          labelClass = ''; labelText = escapeHtml(label);
+        } else {
+          labelClass = ' unmapped'; labelText = '(unlinked)';
+        }
         return `<div class="badge-row" id="badge-${i}">
           <span class="slot">#${i}</span>
           <span class="uid">${uid}</span>
-          <span class="label${label ? '' : ' unmapped'}">${label || '(unlinked)'}</span>
+          <span class="label${labelClass}">${labelText}</span>
           <div class="row-actions">
             <button class="play-btn" onclick="playBadge(${i})">&#9654;</button>
             <button class="link-btn" onclick="openLinkModal(${i})">Link Music</button>
@@ -633,6 +719,14 @@
     }
     function closeSettings() {
       document.getElementById('settings-overlay').classList.remove('visible');
+      // Clear transient outputs so a stale result doesn't linger on reopen.
+      const badge = document.getElementById('stereo-status');
+      badge.style.display = 'none';
+      badge.textContent = '';
+      badge.className = 'stereo-badge';
+      const tuneMsg = document.getElementById('sensor-tune-msg');
+      tuneMsg.textContent = '';
+      tuneMsg.className = 'sensor-msg';
     }
 
     // The top-right corner button closes the modal on the main view, or steps
@@ -1070,16 +1164,18 @@
 
     function connectWS() {
       const ws = new WebSocket('ws://' + location.host + '/ws');
-      const statusEl = document.getElementById('ws-status');
 
       ws.addEventListener('open', () => {
-        statusEl.textContent = 'connected';
-        statusEl.className = 'ws-badge connected';
+        wsConnected = true;
+        updateStatusPill();
+        // Reconnecting after a drop — refresh in case we missed anything and to
+        // re-test Pi reachability.
+        loadData();
       });
 
       ws.addEventListener('close', () => {
-        statusEl.textContent = 'disconnected';
-        statusEl.className = 'ws-badge disconnected';
+        wsConnected = false;
+        updateStatusPill();
         setTimeout(connectWS, 2000);
       });
 
@@ -1121,10 +1217,26 @@
       }
     }
 
+    // Keep the pill honest while the page sits idle. Only a change in reachability
+    // triggers a re-render, so steady state never interrupts scan-flash animations.
+    async function pollConnectivity() {
+      let nowReachable;
+      try {
+        const r = await fetch('/api/quickplay');
+        nowReachable = r.ok;
+      } catch (e) {
+        nowReachable = false;
+      }
+      if (nowReachable !== piReachable) {
+        await loadData();   // transition — refresh labels and re-render
+      }
+    }
+
     loadData();
     loadIR();
     loadIP();
     connectWS();
+    setInterval(pollConnectivity, 8000);
   </script>
 </body>
 </html>
