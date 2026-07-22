@@ -128,7 +128,7 @@ Reachability is derived from the proxied `/api/quickplay` call and re-checked pe
 
 ### Controller
 
-When the Arrow server exposes IR commands, the web UI renders them as buttons grouped by `class`, using each command's `label` for display. The list is cached in `localStorage` and painted optimistically on reload, then reconciled against the live `/api/ir` response. When the server exposes `volumeUp`/`volumeDown`, the UI also appends **3 Up** / **3 Down** buttons that send the same command as a larger step for fast, coarse volume changes.
+When the Arrow server exposes IR commands, the web UI renders them as buttons grouped by `class`, using each command's `label` for display. The list is cached in `localStorage` and painted optimistically on reload, then reconciled against the live `/api/ir` response. When any command in a class carries the `qty` flag, that class gets a shared increment stepper; pressing a `qty` command sends the stepper's value as `count`, so a single tap can step the receiver several increments at once (used for volume). Non-`qty` commands always send a single press.
 
 ## Settings
 
