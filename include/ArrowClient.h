@@ -25,7 +25,7 @@ String arrowGetIR();
 int    arrowSendIR(const String& function, int count = 1);
 int    arrowFloorVolume();        // POST /volume/floor -> drive receiver volume to zero
 int    arrowStartupVolume();      // POST /volume/startup -> drive receiver to target volume
-int    arrowStereoOff();          // POST /stereo/off -> floor volume, then power receiver off
+int    arrowStereoOff(const String& inputCmd = ""); // POST /stereo/off -> [switch input,] floor volume, power off
 String arrowGetStereo();          // raw JSON: {"on":bool|null,"sensor_enabled":bool}
 StereoStatus arrowStereoStatus(); // parsed tri-state from the sensor reading
 String arrowGetStereoConfig();               // GET /stereo/config -> config JSON

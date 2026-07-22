@@ -150,7 +150,7 @@ All `/api/*` routes below the badge endpoints proxy to the Arrow server.
 | DELETE | `/api/badges/{index}` | Remove badge at index                                                  |
 | GET    | `/api/quickplay`      | Proxied quickplay list from Arrow server                               |
 | GET    | `/api/ir`             | Proxied IR function list from Arrow server — returns `[{name, label, class, qty, floor, startup}]` |
-| POST   | `/api/ir/{function}`  | Send a named IR command via Arrow server                               |
+| POST   | `/api/ir/{function}`  | Send a named IR command via Arrow server (acked immediately; sent in the background) |
 | POST   | `/api/volume/floor`   | Drive the receiver's volume to zero via Arrow server's volume policy   |
 | POST   | `/api/volume/startup` | Drive the receiver to the configured target volume via Arrow server    |
 | GET    | `/api/stereo`         | Proxied stereo power status — `{"on":bool\|null,"voltage":float\|null,"sensor_enabled":bool}` |

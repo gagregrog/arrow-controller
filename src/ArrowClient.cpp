@@ -106,7 +106,11 @@ int    arrowSendIR(const String& function, int count) {
 // the background, so there's no long connection to hold open.
 int    arrowFloorVolume()     { return post("/volume/floor"); }
 int    arrowStartupVolume()   { return post("/volume/startup"); }
-int    arrowStereoOff()       { return post("/stereo/off"); }
+int    arrowStereoOff(const String& inputCmd) {
+    String path = "/stereo/off";
+    if (inputCmd.length()) path += "?input_cmd=" + inputCmd;
+    return post(path);
+}
 
 String arrowGetStereo()       { return get("/stereo"); }
 String arrowGetStereoConfig() { return get("/stereo/config"); }
