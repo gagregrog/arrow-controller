@@ -44,6 +44,10 @@ When adding a new library, pin it to the exact version being implemented (e.g. `
 
 Update `README.md` whenever making changes that affect how the project is built, configured, or used — including build flags, `.env` keys, API changes, hardware wiring, or new features.
 
+## Web UI
+
+`src/web/web_ui.html` is the single-file web UI. It contains a byte that makes plain `grep`/`ripgrep` treat it as binary, so searches silently return nothing (no matches, no error) — this can make the file look empty of code it actually has. Always search it with `grep -a` (or `rg --text`). The header `src/web/web_ui_html.h` is auto-generated (gzip) by the `pre:scripts/compress_html.py` build hook — edit the `.html` only; the `.h` regenerates on each device build.
+
 ## Testing
 
 After adding a new feature or modifying existing logic, run `pio test -e native` to check for regressions.

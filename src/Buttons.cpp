@@ -27,13 +27,16 @@ static void onStop() {
     int tv   = arrowSendIR("tv");
     if (failed(stop) || failed(tv)) ledsFlashError();
 }
-// Stop long-press: same as stop, then power the receiver off.
+// Stop long-press: stop playback, switch the receiver back to TV, then have the
+// Pi floor the volume and power the receiver off (in that order). The Pi runs
+// that sequence in the background and acks immediately, so we don't block here;
+// flooring first means the stereo comes back up quiet next time.
 static void onStopPower() {
     ledsFlashStop();
-    int stop  = arrowStop();
-    int tv    = arrowSendIR("tv");
-    int power = arrowSendIR("power");
-    if (failed(stop) || failed(tv) || failed(power)) ledsFlashError();
+    int stop = arrowStop();
+    int tv   = arrowSendIR("tv");
+    int off  = arrowStereoOff();
+    if (failed(stop) || failed(tv) || failed(off)) ledsFlashError();
 }
 static void onPrevious() {
     ledsFlashTrack();

@@ -567,13 +567,21 @@
         }
 
         // qty commands read the shared stepper at click time; the rest send once.
-        const buttons = list.map(it => {
+        let buttons = list.map(it => {
           const text = escapeHtml(it.label || it.name);
           const fn = escapeAttr(it.name);
           return it.qty
             ? `<button class="ir-btn" onclick="sendIRQty(this,'${fn}','${qtyId}')">${text}</button>`
             : `<button class="ir-btn" onclick="sendIR(this,'${fn}',1)">${text}</button>`;
         }).join('');
+
+        // Compound volume actions, when the class declares them.
+        if (list.some(it => it.floor)) {
+          buttons += `<button class="ir-btn" onclick="floorVolume(this)">Floor</button>`;
+        }
+        if (list.some(it => it.startup)) {
+          buttons += `<button class="ir-btn" onclick="startupVolume(this)">Target</button>`;
+        }
 
         return header + buttons;
       }).join('');
@@ -626,6 +634,29 @@
       let count = el ? parseInt(el.value, 10) : 1;
       if (!(count >= 1)) count = 1;
       return sendIR(btn, fn, count);
+    }
+
+    // Trigger the server-side "floor to zero" action. The press count lives in
+    // the Pi's volume policy, so the client just fires the request. The Pi acks
+    // immediately and sends the presses in the background.
+    async function floorVolume(btn) {
+      if (btn) btn.classList.add('sending');
+      try {
+        await fetch('/api/volume/floor', { method: 'POST' });
+      } finally {
+        if (btn) btn.classList.remove('sending');
+      }
+    }
+
+    // Trigger the server-side "drive to target volume" action (floor, then
+    // step up). Like floor, the Pi acks immediately and works in the background.
+    async function startupVolume(btn) {
+      if (btn) btn.classList.add('sending');
+      try {
+        await fetch('/api/volume/startup', { method: 'POST' });
+      } finally {
+        if (btn) btn.classList.remove('sending');
+      }
     }
 
     // ── Stereo status ─────────────────────────────────────────────────────────

@@ -104,6 +104,26 @@ void webUIBegin() {
         }
     });
 
+    // Drive the receiver volume to zero via the Pi's volume policy.
+    apiGetServer()->on("/api/volume/floor", HTTP_POST, [](AsyncWebServerRequest* request) {
+        int code = arrowFloorVolume();
+        if (code >= 200 && code < 300) {
+            request->send(200, "application/json", "{\"ok\":true}");
+        } else {
+            request->send(502, "application/json", "{\"error\":\"upstream error\"}");
+        }
+    });
+
+    // Drive the receiver to the configured target volume via the Pi.
+    apiGetServer()->on("/api/volume/startup", HTTP_POST, [](AsyncWebServerRequest* request) {
+        int code = arrowStartupVolume();
+        if (code >= 200 && code < 300) {
+            request->send(200, "application/json", "{\"ok\":true}");
+        } else {
+            request->send(502, "application/json", "{\"error\":\"upstream error\"}");
+        }
+    });
+
     // Restart the mopidy music service.
     apiGetServer()->on("/api/service/mopidy/restart", HTTP_POST, [](AsyncWebServerRequest* request) {
         int code = arrowRestartMopidy();

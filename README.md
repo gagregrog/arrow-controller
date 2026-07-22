@@ -39,7 +39,7 @@ Four momentary buttons, each wired between the GPIO pin and GND (active low — 
 | Button   | GPIO | Short press                                                 | Long press (≥1.5s)                                    |
 | -------- | ---- | ----------------------------------------------------------- | ----------------------------------------------------- |
 | Play     | 18   | Pause if playing, resume if paused, else start quickplay #0 | Shuffle all                                           |
-| Stop     | 19   | Stop and switch the receiver to the TV input                | Stop, switch to TV input, then power off the receiver |
+| Stop     | 19   | Stop and switch the receiver to the TV input                | Stop, switch to TV input, then floor the volume and power off the receiver |
 | Previous | 26   | Previous track                                              | Volume down (3 increments)                            |
 | Next     | 23   | Next track                                                  | Volume up (3 increments)                              |
 
@@ -128,7 +128,7 @@ Reachability is derived from the proxied `/api/quickplay` call and re-checked pe
 
 ### Controller
 
-When the Arrow server exposes IR commands, the web UI renders them as buttons grouped by `class`, using each command's `label` for display. The list is cached in `localStorage` and painted optimistically on reload, then reconciled against the live `/api/ir` response. When any command in a class carries the `qty` flag, that class gets a shared increment stepper; pressing a `qty` command sends the stepper's value as `count`, so a single tap can step the receiver several increments at once (used for volume). Non-`qty` commands always send a single press.
+When the Arrow server exposes IR commands, the web UI renders them as buttons grouped by `class`, using each command's `label` for display. The list is cached in `localStorage` and painted optimistically on reload, then reconciled against the live `/api/ir` response. When any command in a class carries the `qty` flag, that class gets a shared increment stepper; pressing a `qty` command sends the stepper's value as `count`, so a single tap can step the receiver several increments at once (used for volume). Non-`qty` commands always send a single press. A class with a command flagged `floor` also gets a **Floor** button (`/api/volume/floor`, drives the receiver's volume to zero), and one flagged `startup` gets a **Target** button (`/api/volume/startup`, drives it to the configured target level). Both are server-side compound actions that the Pi runs in the background, so the buttons return immediately.
 
 ## Settings
 
@@ -149,8 +149,10 @@ All `/api/*` routes below the badge endpoints proxy to the Arrow server.
 | POST   | `/api/badges`         | Register a new badge `{"uid":"AA:BB:CC:DD"}`                           |
 | DELETE | `/api/badges/{index}` | Remove badge at index                                                  |
 | GET    | `/api/quickplay`      | Proxied quickplay list from Arrow server                               |
-| GET    | `/api/ir`             | Proxied IR function list from Arrow server — returns `[{name, label, class}]` |
+| GET    | `/api/ir`             | Proxied IR function list from Arrow server — returns `[{name, label, class, qty, floor, startup}]` |
 | POST   | `/api/ir/{function}`  | Send a named IR command via Arrow server                               |
+| POST   | `/api/volume/floor`   | Drive the receiver's volume to zero via Arrow server's volume policy   |
+| POST   | `/api/volume/startup` | Drive the receiver to the configured target volume via Arrow server    |
 | GET    | `/api/stereo`         | Proxied stereo power status — `{"on":bool\|null,"voltage":float\|null,"sensor_enabled":bool}` |
 | GET    | `/api/stereo/config`  | Proxied current sensor config for the settings form                   |
 | PUT    | `/api/stereo/config`  | Proxied sensor config save (enabled/address/channel/gain/thresholds)  |

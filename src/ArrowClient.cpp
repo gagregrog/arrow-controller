@@ -102,6 +102,11 @@ int    arrowSendIR(const String& function, int count) {
     if (count > 1) path += "?count=" + String(count);
     return post(path);
 }
+// These return immediately — the Pi acknowledges and sends the IR presses in
+// the background, so there's no long connection to hold open.
+int    arrowFloorVolume()     { return post("/volume/floor"); }
+int    arrowStartupVolume()   { return post("/volume/startup"); }
+int    arrowStereoOff()       { return post("/stereo/off"); }
 
 String arrowGetStereo()       { return get("/stereo"); }
 String arrowGetStereoConfig() { return get("/stereo/config"); }
